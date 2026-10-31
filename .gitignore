@@ -1,2 +1,19 @@
+# Dependencies
 node_modules/
+
+# Local database, uploaded files and email outbox
 data/
+
+# Environment and secrets
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
