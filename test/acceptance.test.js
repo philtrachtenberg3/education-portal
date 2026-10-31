@@ -76,14 +76,71 @@ const PDF = Buffer.from('%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n'
 test('1. dashboard shows upcoming work from several courses, sorted, with course and deadline', async () => {
   const maya = await as('maya.okafor');
   const { body } = await maya.html('/dashboard');
-  const dueSoon = body.slice(body.indexOf('id="due-h"'), body.indexOf('id="updates-h"'));
+  const dueSoon = body.slice(body.indexOf('id="due-card"'), body.indexOf('id="due-live"'));
   const codes = [...dueSoon.matchAll(/class="course-chip"[^>]*>([^<]+)</g)].map((m) => m[1]);
   assert.ok(new Set(codes).size >= 3, `expected several courses, got ${codes}`);
   const titles = [...dueSoon.matchAll(/class="item-title" href="\/courses\/\d+\/assignments\/(\d+)"/g)].map((m) => Number(m[1]));
   const dues = titles.map((id) => q('SELECT due_at FROM assignments WHERE id = ?', id).due_at);
   assert.deepEqual(dues, [...dues].sort(), 'due soon list must be sorted by due date');
-  assert.match(dueSoon, /Due \w{3} \d+ \w{3} \d{4}, \d+:\d{2} [AP]M E[SD]T/, 'deadline with time zone shown');
+  assert.match(dueSoon, /Due \w{3} \d+ \w{3} \d{4}, <\/span>\w{3} \d+:\d{2} [AP]M E[SD]T/, 'full deadline for screen readers, day and time with zone shown');
   assert.ok(!dueSoon.includes('Problem Set 5'), 'unpublished draft must not appear');
+});
+
+test('1b. dashboard filters upcoming work by date range or by class, and remembers the choice', async () => {
+  const maya = await as('maya.okafor');
+  const now = Date.now();
+  const listed = (body) => {
+    const card = body.slice(body.indexOf('id="due-card"'), body.indexOf('id="due-live"'));
+    return [...card.matchAll(/class="item-title" href="\/courses\/(\d+)\/assignments\/(\d+)"/g)]
+      .map((m) => q('SELECT id, course_id, due_at FROM assignments WHERE id = ?', Number(m[2])));
+  };
+
+  // By date: next 3 days only contains work due within 3 days.
+  const r3 = await maya.get('/dashboard?due=date&range=3d');
+  assert.match(r3.headers.get('set-cookie') || '', /slp_due=/);
+  const in3 = listed(await r3.text());
+  assert.ok(in3.length > 0);
+  assert.ok(in3.every((a) => Date.parse(a.due_at) >= now && Date.parse(a.due_at) <= now + 3 * 864e5 + 60e3));
+
+  // Custom range with the end before the start is reported, not silently accepted.
+  const bad = await maya.html('/dashboard?due=date&range=custom&from=2026-12-10&to=2026-12-01');
+  assert.match(bad.body, /end date is before the start date/);
+
+  // By class, one course, whole course: only that course, including earlier work.
+  const cs = q(`SELECT id FROM courses WHERE code = 'CS 220'`).id;
+  const whole = await maya.html(`/dashboard?due=class&course=${cs}&span=all`);
+  const items = listed(whole.body);
+  assert.ok(items.every((a) => a.course_id === cs), 'only the chosen class');
+  const published = q('SELECT COUNT(*) AS n FROM assignments WHERE course_id = ? AND published = 1', cs).n;
+  assert.equal(items.length, published, 'whole course lists every published item');
+  assert.match(whole.body, /<h4 class="due-earlier">Earlier<\/h4>/);
+
+  // All classes: one boxed section per enrolled course.
+  const all = await maya.html('/dashboard?due=class&course=&span=30d');
+  for (const c of qa(`SELECT course_id FROM enrollments WHERE user_id = ? AND role = 'student'`, userId('maya.okafor'))) {
+    assert.ok(all.body.includes(`id="due-c${c.course_id}"`));
+  }
+
+  // Without query parameters, the remembered cookie restores the last choice.
+  const saved = /slp_due=([^;]+)/.exec(r3.headers.get('set-cookie'))[1];
+  const again = await fetch(`${BASE}/dashboard`, { headers: { cookie: `${maya.cookie}; slp_due=${saved}` } });
+  assert.match(await again.text(), /data-key="range-3d" aria-current="true"/);
+});
+
+test('1c. search finds items only in the user’s own courses, and hides drafts from students', async () => {
+  const maya = await as('maya.okafor');
+  const hit = await maya.html('/search?q=hash');
+  assert.match(hit.body, /Problem Set 4: Hash tables/);
+  assert.match(hit.body, /Reading: Hash tables/);
+  // Draft resource in CS 220 must not appear for students, but does for the instructor.
+  assert.ok(!(await maya.html('/search?q=red-black')).body.includes('Red-black trees'));
+  const prof = await as('elena.vasquez');
+  assert.match((await prof.html('/search?q=red-black')).body, /Red-black trees/);
+  // A course Maya is not enrolled in never shows up.
+  db.prepare(`INSERT INTO courses (code, title, term_id) VALUES ('GEO 300', 'Hashing the Earth', 1)`).run();
+  assert.ok(!(await maya.html('/search?q=hashing')).body.includes('GEO 300'));
+  // Admins have no course search.
+  assert.equal((await (await as('admin')).get('/search?q=hash')).status, 403);
 });
 
 // ---------- 2. Grades across courses ----------

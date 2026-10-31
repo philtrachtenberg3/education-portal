@@ -1,7 +1,6 @@
 <%- include('../partials/head') %>
 <div class="page-head">
   <div><h1>Timetable &amp; calendar</h1><p>Class meetings, deadlines, exams and events. Times in <%= tz.replace(/_/g, ' ') %>.</p></div>
-  <%- include('../partials/view-switch') %>
 </div>
 <form method="get" action="/calendar" class="card filters" aria-label="Calendar options">
   <div class="field">

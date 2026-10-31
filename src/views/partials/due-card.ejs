@@ -1,0 +1,84 @@
+<%# Dashboard upcoming-work card. app.js swaps #due-card's contents in place; without JS every control is a plain link or GET form. %>
+<% const s = due.s; %>
+<section class="card" id="due-card" aria-labelledby="due-h">
+  <header>
+    <h2 id="due-h">Upcoming</h2>
+    <nav class="segmented due-modes" aria-label="Group upcoming work">
+      <a href="<%= due.href({ due: 'date' }) %>" data-due-link data-key="mode-date" <%- s.due === 'date' ? 'aria-current="true"' : '' %>><%- include('icon', { name: 'calendar' }) %> By date</a>
+      <a href="<%= due.href({ due: 'class' }) %>" data-due-link data-key="mode-class" <%- s.due === 'class' ? 'aria-current="true"' : '' %>><%- include('icon', { name: 'courses' }) %> By class</a>
+    </nav>
+  </header>
+
+  <div class="due-toolbar">
+    <% if (s.due === 'date') { %>
+      <div class="filter-row" role="group" aria-labelledby="f-range">
+        <span class="filter-label" id="f-range">Due</span>
+        <% for (const [k, label] of Object.entries(due.RANGES)) { %>
+          <a class="chip" href="<%= due.href({ range: k }) %>" data-due-link data-key="range-<%= k %>" <%- s.range === k ? 'aria-current="true"' : '' %>><%= label %></a>
+        <% } %>
+      </div>
+      <% if (s.range === 'custom') { %>
+        <form class="custom-dates" method="get" action="/dashboard" data-due-form data-key="custom-apply">
+          <input type="hidden" name="due" value="date">
+          <input type="hidden" name="range" value="custom">
+          <% if (s.course) { %><input type="hidden" name="course" value="<%= s.course %>"><% } %>
+          <input type="hidden" name="span" value="<%= s.span %>">
+          <div><label for="due-from">From</label><input id="due-from" type="date" name="from" value="<%= s.from %>"></div>
+          <div><label for="due-to">To</label><input id="due-to" type="date" name="to" value="<%= s.to %>"></div>
+          <button class="btn small" type="submit" data-key="custom-apply">Show</button>
+        </form>
+        <% if (due.error) { %><p class="notice bad small" role="alert"><%= due.error %></p><% } %>
+      <% } %>
+    <% } else { %>
+      <div class="filter-row" role="group" aria-labelledby="f-class">
+        <span class="filter-label" id="f-class">Class</span>
+        <a class="chip" href="<%= due.href({ course: '' }) %>" data-due-link data-key="course-all" <%- !s.course ? 'aria-current="true"' : '' %>>All classes</a>
+        <% for (const c of due.courses) { %>
+          <a class="chip" style="--course: <%= c.color %>" href="<%= due.href({ course: c.id }) %>" data-due-link data-key="course-<%= c.id %>" <%- s.course === c.id ? 'aria-current="true"' : '' %> title="<%= c.nickname || c.title %>"><span class="dot" aria-hidden="true"></span><%= c.code %></a>
+        <% } %>
+      </div>
+      <div class="filter-row" role="group" aria-labelledby="f-span">
+        <span class="filter-label" id="f-span">Show</span>
+        <% for (const [k, label] of Object.entries(due.SPANS)) { %>
+          <a class="chip" href="<%= due.href({ span: k }) %>" data-due-link data-key="span-<%= k %>" <%- s.span === k ? 'aria-current="true"' : '' %>><%= label %></a>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+
+  <p class="due-summary"><%= due.summary %></p>
+
+  <div class="due-body">
+  <% if (s.due === 'date') { %>
+    <% if (!due.list.length) { %>
+      <p class="empty">Nothing due in this period.
+        <% if (s.range !== 'all') { %><a href="<%= due.href({ range: 'all' }) %>" data-due-link data-key="range-all">Show all upcoming work</a><% } %></p>
+    <% } else { %>
+      <ul class="list"><% for (const a of due.list) { %><%- include('assignment-item', { a }) %><% } %></ul>
+    <% } %>
+  <% } else { %>
+    <% for (const g of due.groups) { %>
+      <section class="due-group" style="--course: <%= g.course.color %>" aria-labelledby="due-c<%= g.course.id %>">
+        <h3 id="due-c<%= g.course.id %>">
+          <a href="/courses/<%= g.course.id %>/assignments"><%= g.course.code %> — <%= g.course.nickname || g.course.title %></a>
+          <span class="small muted"><%= g.upcoming.length ? `${g.upcoming.length} upcoming` : 'Nothing upcoming' %></span>
+        </h3>
+        <div class="due-group-body">
+          <% if (!g.upcoming.length && !g.earlier.length) { %>
+            <p class="small muted" style="margin:0">Nothing due in the <%= due.SPANS[s.span].toLowerCase() %>.
+              <% if (s.span !== 'all') { %><a href="<%= due.href({ course: g.course.id, span: 'all' }) %>" data-due-link data-key="span-all">See the whole course</a><% } %></p>
+          <% } %>
+          <% if (g.upcoming.length) { %>
+            <ul class="list"><% for (const a of g.upcoming) { %><%- include('assignment-item', { a, hideCourse: true }) %><% } %></ul>
+          <% } %>
+          <% if (g.earlier.length) { %>
+            <h4 class="due-earlier">Earlier</h4>
+            <ul class="list"><% for (const a of g.earlier) { %><%- include('assignment-item', { a, hideCourse: true }) %><% } %></ul>
+          <% } %>
+        </div>
+      </section>
+    <% } %>
+  <% } %>
+  </div>
+  <div class="card-foot"><a href="/assignments">View all assignments →</a></div>
+</section>

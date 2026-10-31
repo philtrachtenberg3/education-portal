@@ -1,6 +1,10 @@
+    <footer class="footer">Prototype with fictional demo data. Times shown in <%= tz.replace(/_/g, ' ') %><% if (user) { %> · <a href="/settings">Change time zone</a><% } %>.</footer>
+<% if (user) { %>
+    </main>
+  </div>
+</div>
+<% } else { %>
 </main>
-<footer class="footer">
-  <p>Student Learning Portal — prototype with fictional demo data. Times shown in <%= tz %>.<% if (user) { %> <a href="/settings">Change time zone</a>.<% } %></p>
-</footer>
+<% } %>
 </body>
 </html>

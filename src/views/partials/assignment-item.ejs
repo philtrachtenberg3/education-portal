@@ -2,15 +2,16 @@
   const soon = !a.state.pastDue && (Date.parse(a.due_at) - Date.now()) < 48 * 3600e3;
   const openStates = ['not_submitted', 'missing', 'returned'];
   const href = `/courses/${a.course_id}/assignments/${a.id}`;
+  const b = fmt.block(a.due_at);
 %>
-<li class="item">
+<li class="work">
+  <div class="date-block <%= a.state.pastDue ? 'past' : '' %>" aria-hidden="true"><span class="db-top"><%= b.top %></span><span class="db-day"><%= b.day %></span></div>
   <div class="item-main">
     <a class="item-title" href="<%= href %>"><%= a.title %></a>
     <div class="item-meta">
-      <%- include('course-chip', { c: a }) %>
+      <% if (typeof hideCourse === 'undefined' || !hideCourse) { %><%- include('course-chip', { c: a }) %><% } %>
       <span><%= KIND_LABEL[a.kind] %><%= a.group_set_id ? ' · Group' : '' %></span>
-      <span class="due <%= soon ? 'soon' : '' %>"><%= a.state.pastDue ? 'Was due' : 'Due' %> <%= fmt.dateTime(a.due_at) %></span>
-      <span>(<%= fmt.rel(a.due_at) %>)</span>
+      <span class="due <%= soon ? 'soon' : '' %>"><span class="visually-hidden"><%= a.state.pastDue ? 'Was due' : 'Due' %> <%= fmt.date(a.due_at) %>, </span><%= fmt.dueTime(a.due_at) %> · <%= fmt.rel(a.due_at) %></span>
     </div>
   </div>
   <div class="item-actions">

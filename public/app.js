@@ -33,12 +33,53 @@
 
   document.addEventListener('submit', (e) => {
     const form = e.target;
-    if (form.hasAttribute('data-submission-form')) return; // handled below
+    if (e.defaultPrevented || form.hasAttribute('data-submission-form')) return; // handled elsewhere
     const msg = form.getAttribute('data-confirm');
     if (msg && !window.confirm(msg)) { e.preventDefault(); return; }
     dirty = false;
     lockForm(form, e.submitter);
   });
+
+  // ---------- Dashboard "Upcoming" filters: update the card in place ----------
+  // Fetches the filtered dashboard and swaps only this card, so the page doesn't
+  // reload or scroll. Focus returns to the control that was used.
+  const dueCard = document.getElementById('due-card');
+  const dueLive = document.getElementById('due-live');
+  if (dueCard) {
+    let pending = null;
+    const loadDue = async (url, focusKey) => {
+      if (pending) pending.abort();
+      pending = new AbortController();
+      dueCard.setAttribute('aria-busy', 'true');
+      try {
+        const r = await fetch(url, { headers: { Accept: 'text/html' }, signal: pending.signal });
+        const fresh = r.ok && new DOMParser().parseFromString(await r.text(), 'text/html').getElementById('due-card');
+        if (!fresh) throw new Error('unexpected response');
+        dueCard.innerHTML = fresh.innerHTML;
+        history.replaceState(null, '', url);
+        const target = focusKey && dueCard.querySelector('[data-key="' + focusKey + '"]');
+        if (target) target.focus();
+        const summary = dueCard.querySelector('.due-summary');
+        if (dueLive && summary) dueLive.textContent = summary.textContent;
+      } catch (err) {
+        if (err.name !== 'AbortError') window.location.assign(url); // fall back to a normal page load
+      } finally {
+        dueCard.removeAttribute('aria-busy');
+      }
+    };
+    dueCard.addEventListener('click', (e) => {
+      const a = e.target.closest('a[data-due-link]');
+      if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      loadDue(a.href, a.dataset.key);
+    });
+    dueCard.addEventListener('submit', (e) => {
+      const f = e.target.closest('form[data-due-form]');
+      if (!f) return;
+      e.preventDefault();
+      loadDue(f.action + '?' + new URLSearchParams(new FormData(f)).toString(), f.dataset.key);
+    });
+  }
 
   // ---------- Assignment submission: client checks, confirmation, progress ----------
   const form = document.querySelector('form[data-submission-form]');

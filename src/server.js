@@ -6,7 +6,21 @@ const { sessionMiddleware, csrfProtect, requireLogin } = require('./lib/auth');
 const { loadCourse } = require('./lib/authz');
 const { unreadCount, runReminders } = require('./lib/notify');
 const time = require('./lib/time');
-const { STATUS, KIND_LABEL } = require('./lib/coursework');
+const { STATUS, KIND_LABEL, activeStudentCourses, instructorCourses } = require('./lib/coursework');
+
+// Sidebar data for signed-in pages: the user's courses and their count of open work.
+function sidebarData(user) {
+  if (!user || user.role === 'admin') return { navCourses: [], openCount: 0 };
+  if (user.role === 'instructor') return { navCourses: instructorCourses(user.id), openCount: 0 };
+  const openCount = db.prepare(`
+    SELECT COUNT(*) AS n FROM assignments a
+    JOIN enrollments e ON e.course_id = a.course_id AND e.user_id = ? AND e.role = 'student' AND e.status = 'active'
+    JOIN courses c ON c.id = a.course_id AND c.status = 'active'
+    WHERE a.published = 1 AND a.due_at >= ?
+      AND NOT EXISTS (SELECT 1 FROM submission_credits sc WHERE sc.assignment_id = a.id AND sc.student_id = ?)`)
+    .get(user.id, new Date().toISOString(), user.id).n;
+  return { navCourses: activeStudentCourses(user.id), openCount };
+}
 
 const app = express();
 app.set('view engine', 'ejs');
@@ -24,6 +38,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use('/static', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
+// Self-hosted Inter, so pages make no third-party font requests.
+app.use('/static/fonts', express.static(path.join(__dirname, '..', 'node_modules', '@fontsource-variable', 'inter', 'files'), { maxAge: '30d' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use(sessionMiddleware);
 
@@ -37,6 +53,7 @@ app.use((req, res, next) => {
     query: req.query,
     tz,
     unread: req.user ? unreadCount(req.user.id) : 0,
+    ...sidebarData(req.user),
     STATUS, KIND_LABEL,
     fmt: {
       dateTime: (iso) => time.fmtDateTime(iso, tz),
@@ -48,6 +65,22 @@ app.use((req, res, next) => {
       rel: (iso) => time.relative(iso),
       input: (iso, zone) => time.toLocalInput(iso, zone || tz),
       points: (n) => (n == null ? '—' : Number.isInteger(n) ? String(n) : n.toFixed(1)),
+      // Calendar-style date block: { top: 'TODAY' | 'OCT', day: '31' }.
+      block: (iso) => {
+        const d = time.dt(iso, tz);
+        return { top: d.hasSame(time.DateTime.now().setZone(tz), 'day') ? 'Today' : d.toFormat('LLL'), day: d.toFormat('d') };
+      },
+      weekday: (iso) => {
+        const d = time.dt(iso, tz).startOf('day');
+        const diff = Math.round(d.diff(time.DateTime.now().setZone(tz).startOf('day'), 'days').days);
+        return diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : d.toFormat('ccc');
+      },
+      dueTime: (iso) => time.dt(iso, tz).toFormat('ccc h:mm a ZZZZ'),
+      greeting: () => {
+        const h = time.DateTime.now().setZone(tz).hour;
+        return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+      },
+      today: () => time.DateTime.now().setZone(tz).toFormat('cccc d LLLL'),
       size: (b) => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`),
     },
     flash: res.locals.flash || null,
@@ -59,6 +92,7 @@ app.use((req, res, next) => {
 app.use(csrfProtect);
 
 app.use(require('./routes/auth'));
+app.use(require('./routes/search'));
 app.use(require('./routes/student'));
 app.use(require('./routes/teach'));
 app.use(require('./routes/account'));

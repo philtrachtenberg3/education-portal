@@ -3,50 +3,74 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= title ? title + ' · ' : '' %>Student Learning Portal</title>
+  <title><%= title ? title + ' · ' : '' %>Learning Portal</title>
+  <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/app.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
-<header class="site-header">
-  <div class="bar">
-    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">SL</span> Student Learning Portal</a>
-    <% if (user) { %>
-      <nav class="user-nav" aria-label="Account">
-        <ul>
-          <li><a href="/notifications" <%- path === '/notifications' ? 'aria-current="page"' : '' %>>Notifications<% if (unread) { %> <span class="count"><%= unread %></span><span class="visually-hidden"> unread</span><% } %></a></li>
-          <li><a href="/settings" <%- path === '/settings' ? 'aria-current="page"' : '' %>>Settings</a></li>
-          <li>
-            <form method="post" action="/logout" class="inline">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button type="submit" class="linklike" style="padding:.45rem .7rem">Sign out <span class="visually-hidden"><%= user.name %></span></button>
-            </form>
-          </li>
-        </ul>
-      </nav>
-    <% } %>
-  </div>
-  <% if (user) {
-       const navs = {
-         student: [['/dashboard', 'Dashboard'], ['/assignments', 'Assignments'], ['/calendar', 'Timetable'], ['/grades', 'Grades'], ['/courses', 'Courses']],
-         instructor: [['/teach', 'Teaching'], ['/courses', 'Courses']],
-         admin: [['/admin', 'Overview'], ['/admin/users', 'Accounts'], ['/admin/courses', 'Courses & terms'], ['/admin/audit', 'Audit log'], ['/admin/import', 'Import & export']],
-       }[user.role];
-       const active = (href) => path === href || (href !== '/admin' && path.startsWith(href + '/')) || (href === '/courses' && path.startsWith('/courses/'));
-  %>
-  <div class="nav-row">
-    <nav class="main-nav" aria-label="Main">
+<% if (!user) { %>
+<main id="main" tabindex="-1" class="bare">
+<% } else {
+     const navs = {
+       student: [['/dashboard', 'Dashboard', 'dashboard'], ['/assignments', 'Assignments', 'assignments'], ['/calendar', 'Timetable', 'calendar'], ['/grades', 'Grades', 'grades'], ['/courses', 'Courses', 'courses']],
+       instructor: [['/teach', 'Teaching', 'teach'], ['/courses', 'Courses', 'courses']],
+       admin: [['/admin', 'Overview', 'dashboard'], ['/admin/users', 'Accounts', 'users'], ['/admin/courses', 'Courses & terms', 'courses'], ['/admin/audit', 'Audit log', 'audit'], ['/admin/import', 'Import & export', 'upload']],
+     }[user.role];
+     const inCourse = /^\/courses\/(\d+)/.exec(path);
+     const active = (href) => path === href || (href !== '/admin' && path.startsWith(href + '/') && !(href === '/courses' && inCourse));
+     const initials = user.name.replace(/^(Dr|Prof)\.?\s+/, '').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+%>
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">SL</span> Learning Portal</a>
+    <nav class="side-nav" aria-label="Main">
       <ul>
-        <% for (const [href, label] of navs) { %>
-          <li><a href="<%= href %>" <%- active(href) ? 'aria-current="page"' : '' %>><%= label %></a></li>
+        <% for (const [href, label, icon] of navs) { %>
+          <li><a href="<%= href %>" <%- active(href) ? 'aria-current="page"' : '' %>><%- include('icon', { name: icon }) %><span><%= label %></span><% if (href === '/assignments' && openCount) { %><span class="nav-count" aria-label="<%= openCount %> open"><%= openCount %></span><% } %></a></li>
         <% } %>
       </ul>
     </nav>
-  </div>
-  <% } %>
-</header>
-<main id="main" tabindex="-1">
+    <% if (navCourses.length) { %>
+      <nav class="side-courses" aria-label="<%= user.role === 'instructor' ? 'Courses you teach' : 'My courses' %>">
+        <p class="side-heading"><%= user.role === 'instructor' ? 'Teaching' : 'My courses' %></p>
+        <ul>
+          <% for (const c of navCourses) { %>
+            <li><a href="/courses/<%= c.id %>" style="--course: <%= c.color %>" <%- inCourse && Number(inCourse[1]) === c.id ? 'aria-current="page"' : '' %>><span class="sq" aria-hidden="true"></span><strong><%= c.code %></strong><span class="side-course-name"><%= c.nickname || c.title %></span></a></li>
+          <% } %>
+        </ul>
+      </nav>
+    <% } %>
+    <div class="side-user">
+      <span class="avatar" aria-hidden="true"><%= initials %></span>
+      <span><strong><%= user.name %></strong><span class="side-role"><%= user.role[0].toUpperCase() + user.role.slice(1) %></span></span>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <header class="topbar">
+      <% if (user.role !== 'admin') { %>
+        <form class="topbar-search" method="get" action="/search" role="search">
+          <label for="site-search" class="visually-hidden">Search your courses</label>
+          <%- include('icon', { name: 'search' }) %>
+          <input id="site-search" type="search" name="q" placeholder="Search assignments, materials, courses…" value="<%= path === '/search' ? (query.q || '') : '' %>">
+        </form>
+      <% } %>
+      <div class="topbar-actions">
+        <a class="icon-btn" href="/notifications" <%- path === '/notifications' ? 'aria-current="page"' : '' %>>
+          <%- include('icon', { name: 'bell' }) %><span class="visually-hidden">Notifications<%= unread ? `, ${unread} unread` : '' %></span>
+          <% if (unread) { %><span class="icon-badge" aria-hidden="true"><%= unread %></span><% } %>
+        </a>
+        <a class="icon-btn" href="/settings" <%- path === '/settings' ? 'aria-current="page"' : '' %>><%- include('icon', { name: 'settings' }) %><span class="visually-hidden">Settings</span></a>
+        <form method="post" action="/logout">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="icon-btn"><%- include('icon', { name: 'logout' }) %><span class="visually-hidden">Sign out <%= user.name %></span></button>
+        </form>
+      </div>
+    </header>
+    <main id="main" tabindex="-1">
+<% } %>
 <% if (flash) { %>
   <div class="notice <%= flash.type === 'error' ? 'bad' : 'ok' %>" role="<%= flash.type === 'error' ? 'alert' : 'status' %>"><%= flash.message %></div>
 <% } %>

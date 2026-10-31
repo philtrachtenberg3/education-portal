@@ -1,5 +1,19 @@
 <%- include('../partials/head') %>
-<div class="page-head"><div><h1>Teaching dashboard</h1><p><%= courses.length %> course<%= courses.length === 1 ? '' : 's' %> this term · times in <%= tz.replace(/_/g, ' ') %></p></div></div>
+<div class="page-head">
+  <div><p class="eyebrow"><%= fmt.today() %> · <%= tz.replace(/_/g, ' ') %></p><h1><%= fmt.greeting() %>, <%= user.name.replace(/^(Dr|Prof)\.?\s+/, '').split(' ')[0] %></h1></div>
+</div>
+<% if (courses.length) {
+     const waiting = toGrade.reduce((n, a) => n + a.waiting, 0);
+     const requests = pendingMembers.reduce((n, p) => n + p.n, 0);
+     const draftCount = drafts.reduce((n, d) => n + d.n, 0);
+     const classes = upcoming.filter((i) => i.type === 'meeting' && !i.cancelled); %>
+<section class="tiles" aria-label="At a glance">
+  <div class="tile <%= waiting ? 'warn' : '' %>"><p class="tile-label">Waiting to be graded</p><p class="tile-value"><%= waiting %></p><p class="tile-note"><%= toGrade.length ? `Across ${toGrade.length} assignment${toGrade.length === 1 ? '' : 's'}` : 'All caught up' %></p></div>
+  <div class="tile"><p class="tile-label">Classes this week</p><p class="tile-value"><%= classes.length %></p><p class="tile-note"><%= classes[0] ? `Next: ${classes[0].course.code} ${classes[0].title}, ${fmt.weekday(classes[0].start)} ${fmt.time(classes[0].start)}` : 'No classes in the next 7 days' %></p></div>
+  <div class="tile"><p class="tile-label">Group requests</p><p class="tile-value"><%= requests %></p><p class="tile-note"><%= requests ? 'Waiting for your approval' : 'None pending' %></p></div>
+  <div class="tile"><p class="tile-label">Draft assignments</p><p class="tile-value"><%= draftCount %></p><p class="tile-note"><%= draftCount ? 'Not yet visible to students' : 'Everything is published' %></p></div>
+</section>
+<% } %>
 
 <% if (!courses.length) { %>
   <p class="empty">You are not assigned to teach any active courses. Course assignments are managed by your administrator.</p>

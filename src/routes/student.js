@@ -44,28 +44,110 @@ function recentUpdates(studentId, courses, days = 21) {
   return out.filter((u) => u.course).sort((a, b) => b.when.localeCompare(a.when));
 }
 
+// ---------- Dashboard "Upcoming" panel ----------
+
+const DUE_RANGES = { '3d': 'Next 3 days', '7d': 'Next 7 days', '30d': 'Next 30 days', all: 'All upcoming', custom: 'Custom dates' };
+const CLASS_SPANS = { '7d': 'Next 7 days', '30d': 'Next 30 days', all: 'Whole course' };
+const DUE_KEYS = ['due', 'range', 'from', 'to', 'course', 'span'];
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Filters for the dashboard's upcoming-work card: "by date" with a date range, or
+ * "by class" with a course and span. Choices come from the query string, or from
+ * the cookie that remembers the last choice.
+ */
+function duePanel(req, res, items, courses) {
+  const tz = req.user.timezone;
+  const now = DateTime.now().setZone(tz);
+  const nowIso = now.toUTC().toISO();
+  const fromQuery = DUE_KEYS.some((k) => k in req.query);
+  let src = req.query;
+  if (!fromQuery) {
+    const saved = /(?:^|;\s*)slp_due=([^;]*)/.exec(req.headers.cookie || '')?.[1];
+    try { src = saved ? Object.fromEntries(new URLSearchParams(decodeURIComponent(saved))) : {}; } catch { src = {}; }
+  }
+  const s = {
+    due: src.due === 'class' ? 'class' : 'date',
+    range: DUE_RANGES[src.range] ? src.range : '7d',
+    from: ISO_DATE.test(src.from) ? src.from : '',
+    to: ISO_DATE.test(src.to) ? src.to : '',
+    course: courses.find((c) => String(c.id) === String(src.course))?.id || '',
+    span: CLASS_SPANS[src.span] ? src.span : '7d',
+  };
+  const query = (o = {}) => {
+    const merged = { ...s, ...o };
+    return new URLSearchParams(Object.entries(merged).filter(([, v]) => v !== '' && v != null)).toString();
+  };
+  if (fromQuery) res.cookie('slp_due', query(), { httpOnly: true, sameSite: 'lax', maxAge: 365 * 864e5 });
+
+  const fmtDay = (d) => d.toFormat('ccc d LLL');
+  const within = (start, end) => (i) => i.due_at >= start.toUTC().toISO() && (!end || i.due_at <= end.toUTC().toISO());
+  const out = { s, href: (o) => `/dashboard?${query(o)}`, RANGES: DUE_RANGES, SPANS: CLASS_SPANS, courses, error: null };
+
+  if (s.due === 'date') {
+    let start = now;
+    let end = null;
+    let phrase;
+    if (['3d', '7d', '30d'].includes(s.range)) {
+      end = now.plus({ days: parseInt(s.range, 10) });
+      phrase = `in the ${DUE_RANGES[s.range].toLowerCase()}`;
+    } else if (s.range === 'custom') {
+      if (s.from) start = DateTime.fromISO(s.from, { zone: tz }).startOf('day');
+      if (s.to) end = DateTime.fromISO(s.to, { zone: tz }).endOf('day');
+      if (end && end < start) {
+        out.error = 'The end date is before the start date.';
+        end = start.endOf('day');
+      }
+      phrase = end ? `between ${fmtDay(start)} and ${fmtDay(end)}` : `from ${fmtDay(start)} onwards`;
+    } else {
+      phrase = 'in all your courses';
+    }
+    out.list = items.filter(within(start, end));
+    out.summary = `${out.list.length} item${out.list.length === 1 ? '' : 's'} due ${phrase}`;
+    return out;
+  }
+
+  const end = s.span === 'all' ? null : now.plus({ days: s.span === '7d' ? 7 : 30 });
+  const shown = s.course ? courses.filter((c) => c.id === s.course) : courses;
+  out.groups = shown.map((c) => {
+    const mine = items.filter((i) => i.course_id === c.id);
+    return {
+      course: c,
+      upcoming: mine.filter((i) => i.due_at >= nowIso && (!end || i.due_at <= end.toUTC().toISO())),
+      earlier: s.span === 'all' ? mine.filter((i) => i.due_at < nowIso).reverse() : [],
+    };
+  });
+  const n = out.groups.reduce((t, g) => t + g.upcoming.length, 0);
+  const where = s.course ? shown[0].code : 'all classes';
+  out.summary = s.span === 'all'
+    ? `${n} upcoming in ${where}, plus ${out.groups.reduce((t, g) => t + g.earlier.length, 0)} earlier`
+    : `${n} due in ${where} in the ${CLASS_SPANS[s.span].toLowerCase()}`;
+  return out;
+}
+
 router.get('/dashboard', student, (req, res) => {
   const now = new Date().toISOString();
+  const weekEnd = new Date(Date.now() + 7 * 864e5).toISOString();
   const courses = cw.activeStudentCourses(req.user.id);
   const items = cw.studentAssignments(req.user.id);
-  const open = (i) => !['graded', 'excused'].includes(i.state.status);
-  const dueSoon = items.filter((i) => i.due_at >= now).slice(0, 8);
+  const upcoming = items.filter((i) => i.due_at >= now);
+  const due = duePanel(req, res, items, courses);
   const pastDue = items.filter((i) => i.state.status === 'missing');
-  const todayEnd = DateTime.now().setZone(req.user.timezone).endOf('day').toUTC().toISO();
-  const today = calendarItems(courses, now, todayEnd).filter((i) => i.type === 'meeting');
-  // With classes still to come today, "next" means the first class after today.
-  const next = nextMeeting(courses, today.length ? new Date(todayEnd) : new Date());
+  const thisWeek = upcoming.filter((i) => i.due_at <= weekEnd);
+  const recentlyGraded = items
+    .filter((i) => i.state.grade?.released_at && i.state.grade.released_at >= new Date(Date.now() - 7 * 864e5).toISOString())
+    .sort((a, b) => b.state.grade.released_at.localeCompare(a.state.grade.released_at));
 
   const snapshot = courses.map((c) => {
     const courseItems = items.filter((i) => i.course_id === c.id);
     const latest = courseItems.filter((i) => i.state.grade).sort((a, b) => (b.state.grade.released_at || '').localeCompare(a.state.grade.released_at || ''))[0];
-    return { course: c, total: cw.provisionalTotal(c, courseItems), latest, open: courseItems.filter(open).length };
+    return { course: c, total: cw.provisionalTotal(c, courseItems), latest };
   });
 
   res.render('student/dashboard', {
-    title: 'Dashboard', courses, dueSoon, pastDue, today, next, snapshot,
-    updates: recentUpdates(req.user.id, courses).slice(0, 8),
-    upcomingCount: items.filter((i) => i.due_at >= now).length,
+    title: 'Dashboard', courses, due, pastDue, thisWeek, recentlyGraded, snapshot,
+    next: nextMeeting(courses),
+    updates: recentUpdates(req.user.id, courses).slice(0, 6),
   });
 });
 

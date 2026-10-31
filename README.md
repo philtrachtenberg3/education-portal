@@ -35,7 +35,7 @@ The login page lists the demo accounts — click one to sign in. All use the pas
 
 | # | Criterion | Where to see it |
 |---|---|---|
-| 1 | Cross-course “due soon”, sorted, labelled | Maya → **Dashboard** |
+| 1 | Cross-course “due soon”, sorted, labelled | Maya → **Dashboard** (filter by date range, or switch to *By class* and pick a course) |
 | 2 | One grades view with clear states | Maya → **Grades** (graded, *Not graded yet*, *Excused*, *Not submitted*; Essay 1 is graded but unreleased so it stays hidden) |
 | 3 | Weekly timetable, meetings vs. due dates | Maya → **Timetable**; next week shows a cancelled lecture and a room change |
 | 4 | Find a resource by module and by search | Maya → CS 220 → **Materials** (browse “Week 7”, or search “course notes”) |
@@ -62,8 +62,11 @@ For a prototype that has to be trustworthy and accessible, this uses a deliberat
   synchronous transactions, with zero setup. The schema in `src/db.js` maps 1:1 to the spec’s
   §10 entities and ports directly to PostgreSQL.
 - **Luxon** for time zones; **multer** for uploads; **bcryptjs** for demo passwords.
+- **Inter** (variable font, self-hosted from `@fontsource-variable/inter`) so pages make no third-party requests.
 
-No front-end build step and only six runtime dependencies.
+No front-end build step and seven runtime dependencies.
+
+The visual system (“Studio”: dark sidebar, Inter, indigo accent) lives in `public/styles.css` as CSS custom properties on `:root`, with a dark-mode variant under `prefers-color-scheme`.
 
 ## Project layout
 
@@ -82,7 +85,7 @@ src/
     notify.js          in-app notifications, email transport, reminders  ← replace mailer
     audit.js           append-only audit log
     csv.js             CSV import/export boundary    ← replace with SIS sync
-  routes/              student, teach, course, materials, assignments, grading, groups, admin, account
+  routes/              student, teach, search, course, materials, assignments, grading, groups, admin, account
   views/               EJS templates
 public/                styles.css, app.js
 test/                  acceptance tests (node:test)

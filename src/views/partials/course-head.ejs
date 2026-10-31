@@ -4,13 +4,14 @@
   const tabKey = { overview: '', schedule: '/schedule', assignments: '/assignments', grades: '/grades', materials: '/materials', groups: '/groups' }[tab];
 %>
 <div class="course-head" style="--course: <%= course.color %>">
-  <div class="code"><%= course.code %> · <%= course.term_name %><% if (courseRole === 'instructor') { %> · <span class="badge info">Instructor view</span><% } %></div>
-  <% if (courseNickname) { %>
-    <p class="course-title"><%= courseNickname %></p>
-    <p class="muted" style="margin:0">Official name: <%= course.title %></p>
-  <% } else { %>
-    <p class="course-title"><%= course.title %></p>
-  <% } %>
+  <div class="course-id">
+    <span class="course-badge" aria-hidden="true"><%= course.code %></span>
+    <div>
+      <div class="code"><%= course.code %> · <%= course.term_name %><% if (courseRole === 'instructor') { %> · <span class="badge info">Instructor view</span><% } %></div>
+      <p class="course-title"><%= courseNickname || course.title %></p>
+      <% if (courseNickname) { %><p class="small muted" style="margin:0">Official name: <%= course.title %></p><% } %>
+    </div>
+  </div>
   <nav class="course-tabs" aria-label="<%= course.code %> sections">
     <% for (const [href, label] of tabs) { %>
       <a href="<%= base + href %>" <%- tabKey === href ? 'aria-current="page"' : '' %>><%= label %></a>

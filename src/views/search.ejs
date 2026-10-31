@@ -1,0 +1,46 @@
+<%- include('partials/head') %>
+<div class="page-head">
+  <div><h1>Search</h1><p><%= q ? `${total} result${total === 1 ? '' : 's'} for “${q}” in your courses` : 'Search assignments, materials and courses you are enrolled in.' %></p></div>
+</div>
+<form method="get" action="/search" class="card filters" role="search" aria-label="Search your courses">
+  <div class="field" style="flex:3 1 260px"><label for="q">Search for</label><input id="q" type="search" name="q" value="<%= q %>" minlength="2" required></div>
+  <div class="actions"><button class="btn" type="submit">Search</button></div>
+</form>
+<% if (q && q.length < 2) { %><p class="empty">Type at least two characters.</p><% } %>
+<% if (q.length >= 2 && !total) { %><p class="empty">Nothing in your courses matches “<%= q %>”. Try a different word.</p><% } %>
+<% if (results.courses.length) { %>
+  <section class="card" aria-labelledby="sr-courses">
+    <h2 id="sr-courses">Courses</h2>
+    <ul class="list"><% for (const c of results.courses) { %>
+      <li><a class="item-title" href="/courses/<%= c.id %>"><%- include('partials/course-chip', { c }) %> <%= c.title %></a></li>
+    <% } %></ul>
+  </section>
+<% } %>
+<% if (results.assignments.length) { %>
+  <section class="card" aria-labelledby="sr-assign">
+    <h2 id="sr-assign">Assignments</h2>
+    <ul class="list"><% for (const a of results.assignments) { %>
+      <li class="item">
+        <div class="item-main">
+          <a class="item-title" href="/courses/<%= a.course_id %>/assignments/<%= a.id %>"><%= a.title %></a>
+          <div class="item-meta"><%- include('partials/course-chip', { c: a }) %><span><%= KIND_LABEL[a.kind] %></span><span>Due <%= fmt.dateTime(a.due_at) %></span><% if (!a.published) { %><span class="badge warn">Draft</span><% } %></div>
+        </div>
+      </li>
+    <% } %></ul>
+  </section>
+<% } %>
+<% if (results.materials.length) { %>
+  <section class="card" aria-labelledby="sr-mat">
+    <h2 id="sr-mat">Materials</h2>
+    <ul class="list"><% for (const r of results.materials) { %>
+      <li class="item">
+        <div class="item-main">
+          <a class="item-title" href="/courses/<%= r.course_id %>/materials#resource-<%= r.id %>"><%= r.title %></a>
+          <div class="item-meta"><%- include('partials/course-chip', { c: r }) %><span><%= r.stored_name ? 'File' : 'Link' %></span><% if (!r.published) { %><span class="badge warn">Draft</span><% } %></div>
+          <% if (r.description) { %><p class="small" style="margin:.25rem 0 0"><%= r.description %></p><% } %>
+        </div>
+      </li>
+    <% } %></ul>
+  </section>
+<% } %>
+<%- include('partials/foot') %>

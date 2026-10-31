@@ -1,30 +1,70 @@
 <%- include('../partials/head') %>
 <div class="page-head">
   <div>
-    <h1>Hello, <%= user.name.split(' ')[0] %></h1>
-    <p><%= courses.length %> active course<%= courses.length === 1 ? '' : 's' %> · <%= upcomingCount %> upcoming item<%= upcomingCount === 1 ? '' : 's' %> · times in <%= tz.replace(/_/g, ' ') %></p>
+    <p class="eyebrow"><%= fmt.today() %> · <%= tz.replace(/_/g, ' ') %></p>
+    <h1><%= fmt.greeting() %>, <%= user.name.split(' ')[0] %></h1>
   </div>
-  <%- include('../partials/view-switch') %>
 </div>
 
 <% if (!courses.length) { %>
   <p class="empty">You are not enrolled in any active courses yet. Once your enrollments are confirmed, your work, timetable and grades will appear here.</p>
 <% } else { %>
-<div class="dash">
-  <div class="stack">
+<section class="tiles" aria-label="At a glance">
+  <div class="tile">
+    <p class="tile-label">Due this week</p>
+    <p class="tile-value"><%= thisWeek.length %></p>
+    <% if (thisWeek[0]) { const n = thisWeek[0]; const urgent = Date.parse(n.due_at) - Date.now() < 48 * 3600e3; %>
+      <p class="tile-note <%= urgent ? 'urgent' : '' %>">Next: <a href="/courses/<%= n.course_id %>/assignments/<%= n.id %>"><%= n.title %></a> · <%= fmt.rel(n.due_at) %></p>
+    <% } else { %><p class="tile-note">Nothing due in the next 7 days</p><% } %>
+  </div>
+  <div class="tile <%= pastDue.length ? 'warn' : '' %>">
+    <p class="tile-label">Past due</p>
+    <p class="tile-value"><%= pastDue.length %></p>
     <% if (pastDue.length) { %>
-      <div class="notice warn" role="note">
-        <strong><span aria-hidden="true">! </span><%= pastDue.length %> past-due item<%= pastDue.length === 1 ? '' : 's' %> not submitted.</strong>
-        <a href="/assignments?status=missing">Review past-due work</a>
-      </div>
+      <p class="tile-note"><a href="<%= pastDue.length === 1 ? `/courses/${pastDue[0].course_id}/assignments/${pastDue[0].id}` : '/assignments?status=missing' %>"><%= pastDue.length === 1 ? pastDue[0].title : 'Review past-due work' %></a></p>
+    <% } else { %><p class="tile-note">You’re all caught up</p><% } %>
+  </div>
+  <div class="tile">
+    <p class="tile-label">Next class</p>
+    <% if (next) { %>
+      <p class="tile-value sm"><%= fmt.weekday(next.start) %> <%= fmt.time(next.start) %></p>
+      <p class="tile-note"><%= next.course.code %> <%= next.title %> · <%= next.location %><% if (next.changed) { %> <span class="badge warn">Room changed</span><% } %></p>
+    <% } else { %>
+      <p class="tile-value sm">None soon</p><p class="tile-note">No classes in the next two weeks</p>
     <% } %>
+  </div>
+  <div class="tile">
+    <p class="tile-label">New feedback</p>
+    <p class="tile-value"><%= recentlyGraded.length %></p>
+    <p class="tile-note"><% if (recentlyGraded.length) { %><a href="/courses/<%= recentlyGraded[0].course_id %>/assignments/<%= recentlyGraded[0].id %>#feedback"><%= recentlyGraded[0].title %></a><%= recentlyGraded.length > 1 ? ` and ${recentlyGraded.length - 1} more` : '' %><% } else { %>Nothing new this week<% } %></p>
+  </div>
+</section>
 
-    <section class="card" aria-labelledby="due-h">
-      <header><h2 id="due-h">Due soon</h2><a href="/assignments">See all assignments</a></header>
-      <% if (!dueSoon.length) { %>
-        <p class="empty">Nothing is due in your courses right now. 🎉 New work will appear here as soon as it is published.</p>
-      <% } else { %>
-        <ul class="list"><% for (const a of dueSoon) { %><%- include('../partials/assignment-item', { a }) %><% } %></ul>
+<div class="dash">
+  <div>
+    <%- include('../partials/due-card') %>
+    <p id="due-live" class="visually-hidden" role="status" aria-live="polite"></p>
+  </div>
+
+  <div class="stack">
+    <section class="card" aria-labelledby="grades-h">
+      <header><h2 id="grades-h">Grades</h2><a href="/grades" class="small">All grades</a></header>
+      <% for (const s of snapshot) { %>
+        <div class="grade-row" style="--course: <%= s.course.color %>">
+          <div class="kv">
+            <a href="/courses/<%= s.course.id %>/grades" class="course-chip" style="--course: <%= s.course.color %>"><%= s.course.code %><span class="visually-hidden"> grades</span></a>
+            <% if (s.total) { %>
+              <span class="small"><span class="score"><%= s.total.percent.toFixed(1) %>%</span> <span class="muted">provisional</span></span>
+            <% } else { %>
+              <span class="small muted"><%= s.course.show_total ? 'No grades yet' : 'Total not shown' %></span>
+            <% } %>
+          </div>
+          <% if (s.total) { %><div class="bar" aria-hidden="true"><i style="width: <%= Math.min(100, s.total.percent).toFixed(1) %>%"></i></div><% } %>
+          <div class="small muted" style="<%= s.total ? '' : 'margin-top:.35rem' %>">
+            <% if (s.latest) { %>Latest: <a href="/courses/<%= s.course.id %>/assignments/<%= s.latest.id %>#feedback"><%= s.latest.title %></a> — <%= s.latest.state.grade.excused ? 'Excused' : `${fmt.points(s.latest.state.grade.points)}/${fmt.points(s.latest.points)}` %>
+            <% } else { %>No grades released yet<% } %>
+          </div>
+        </div>
       <% } %>
     </section>
 
@@ -35,66 +75,14 @@
       <% } else { %>
         <ul class="list">
           <% for (const u of updates) { %>
-            <li class="item">
-              <div class="item-main">
-                <span class="badge outline"><span aria-hidden="true"><%= u.icon %></span> <%= u.kind %></span>
-                <a class="item-title" href="<%= u.link %>"><%= u.title %></a>
-                <div class="item-meta"><%- include('../partials/course-chip', { c: u.course }) %><span><%= fmt.rel(u.when) %></span></div>
-              </div>
+            <li>
+              <span class="update-kind"><span aria-hidden="true"><%= u.icon %></span> <%= u.kind %> · <%= u.course.code %></span>
+              <a class="item-title" href="<%= u.link %>"><%= u.title %></a>
+              <span class="small muted"><%= fmt.rel(u.when) %></span>
             </li>
           <% } %>
         </ul>
       <% } %>
-    </section>
-  </div>
-
-  <div class="stack">
-    <section class="card" aria-labelledby="next-h">
-      <h2 id="next-h"><%= today.length ? 'Today' : 'Next class' %></h2>
-      <% const show = today.length ? today : (next ? [next] : []); %>
-      <% if (!show.length) { %>
-        <p class="empty">No classes scheduled in the next two weeks.</p>
-      <% } else { %>
-        <ul class="ev-list">
-          <% for (const m of show) { %>
-            <li class="ev <%= m.cancelled ? 'cancelled' : '' %>" style="--course: <%= m.course.color %>">
-              <span class="type"><span aria-hidden="true">▣</span> Class · <%= m.subtype %></span>
-              <span class="t"><%= m.course.code %> <%= m.title %></span>
-              <% if (m.cancelled) { %><strong class="badge bad">Cancelled</strong><% } %>
-              <div><%= today.length ? '' : fmt.date(m.start) + ', ' %><%= fmt.range(m.start, m.end) %></div>
-              <div><%= m.location %><% if (m.changed) { %> <span class="badge warn">Room changed</span><% } %></div>
-              <% if (m.url) { %><div><a href="<%= m.url %>" rel="noopener">Join online<span class="visually-hidden"> for <%= m.course.code %> <%= m.title %></span></a></div><% } %>
-              <% if (m.note) { %><div class="small muted"><%= m.note %></div><% } %>
-            </li>
-          <% } %>
-        </ul>
-        <% if (today.length && next) { %><p class="small muted" style="margin-top:.5rem">Next after today: <%= next.course.code %> <%= next.title %>, <%= fmt.date(next.start) %></p><% } %>
-      <% } %>
-      <p style="margin:.75rem 0 0"><a href="/calendar">Open weekly timetable</a></p>
-    </section>
-
-    <section class="card" aria-labelledby="grades-h">
-      <header><h2 id="grades-h">Grades</h2><a href="/grades">All grades</a></header>
-      <ul class="list">
-        <% for (const s of snapshot) { %>
-          <li>
-            <div class="kv">
-              <a href="/courses/<%= s.course.id %>/grades"><%- include('../partials/course-chip', { c: s.course }) %> <span class="visually-hidden">grades</span></a>
-              <% if (s.total) { %>
-                <span><span class="score"><%= s.total.percent.toFixed(1) %>%</span> <span class="small muted">provisional</span></span>
-              <% } else { %>
-                <span class="small muted"><%= s.course.show_total ? 'No grades yet' : 'Total not shown' %></span>
-              <% } %>
-            </div>
-            <div class="small">
-              <% if (s.latest) { %>
-                Latest: <a href="/courses/<%= s.course.id %>/assignments/<%= s.latest.id %>#feedback"><%= s.latest.title %></a> —
-                <%= s.latest.state.grade.excused ? 'Excused' : `${fmt.points(s.latest.state.grade.points)}/${fmt.points(s.latest.points)}` %>
-              <% } else { %><span class="muted">No grades released yet</span><% } %>
-            </div>
-          </li>
-        <% } %>
-      </ul>
     </section>
   </div>
 </div>
