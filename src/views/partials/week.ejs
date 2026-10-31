@@ -1,0 +1,26 @@
+<%# Shared week grid. Expects: days [{date, items}], TYPE_INFO, showCourse %>
+<div class="legend" aria-hidden="true">
+  <% for (const k of ['meeting', 'deadline', 'exam', 'event']) { %><span><%= TYPE_INFO[k].icon %> <%= TYPE_INFO[k].label %></span><% } %>
+</div>
+<div class="week">
+  <% for (const d of days) { const isToday = d.today; %>
+    <section class="day <%= isToday ? 'today' : '' %> <%= d.items.length ? '' : 'empty-day' %>" aria-label="<%= d.date.toFormat('cccc d LLLL') %><%= isToday ? ', today' : '' %>">
+      <h3><span><%= d.date.toFormat('ccc d LLL') %></span><% if (isToday) { %><span class="badge info">Today</span><% } %></h3>
+      <% if (!d.items.length) { %><p class="small muted">Nothing scheduled</p><% } %>
+      <ul>
+        <% for (const i of d.items) { %>
+          <li class="ev <%= i.type %> <%= i.cancelled ? 'cancelled' : '' %>" style="--course: <%= i.course.color %>">
+            <span class="type"><span aria-hidden="true"><%= TYPE_INFO[i.type].icon %></span> <%= TYPE_INFO[i.type].label %><%= i.type === 'meeting' ? ' · ' + i.subtype : '' %></span>
+            <span class="t"><% if (i.link) { %><a href="<%= i.link %>"><%= i.course.code %> <%= i.title %></a><% } else { %><%= i.course.code %> <%= i.title %><% } %></span>
+            <% if (i.cancelled) { %><strong class="badge bad">Cancelled</strong><% } %>
+            <% if (i.draft) { %><span class="badge warn">Draft — not visible to students</span><% } %>
+            <div><%= i.type === 'deadline' ? 'Due ' + fmt.timeTz(i.start) : fmt.range(i.start, i.end) %></div>
+            <% if (i.location) { %><div><%= i.location %><% if (i.changed) { %> <span class="badge warn">Room changed</span><% } %></div><% } %>
+            <% if (i.url && !i.cancelled) { %><div><a href="<%= i.url %>" rel="noopener">Online link<span class="visually-hidden"> for <%= i.course.code %> <%= i.title %></span></a></div><% } %>
+            <% if (i.note) { %><div class="small muted"><%= i.note %></div><% } %>
+          </li>
+        <% } %>
+      </ul>
+    </section>
+  <% } %>
+</div>

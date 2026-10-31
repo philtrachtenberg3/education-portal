@@ -1,0 +1,40 @@
+<%- include('partials/head') %>
+<div class="login-wrap">
+  <section class="card" aria-labelledby="signin-h">
+    <h1 id="signin-h">Sign in</h1>
+    <p class="muted">Use your university email and password. (Institutional single sign-on replaces this form in production.)</p>
+    <% if (error) { %><div class="error-summary" role="alert" tabindex="-1"><%= error %></div><% } %>
+    <form method="post" action="/login">
+      <input type="hidden" name="next" value="<%= next %>">
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required value="<%= email %>">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+  </section>
+  <% if (demo.length) { %>
+  <section class="card demo-accounts" aria-labelledby="demo-h">
+    <h2 id="demo-h">Demo accounts</h2>
+    <p class="muted small">Fictional people, prototype only. Every demo password is <strong>demo1234</strong>. Choose an account to sign in as it.</p>
+    <ul class="list">
+      <% for (const d of demo) { %>
+        <li>
+          <form method="post" action="/login">
+            <input type="hidden" name="email" value="<%= d.email %>">
+            <input type="hidden" name="password" value="demo1234">
+            <button class="btn secondary small" type="submit">
+              <span><strong><%= d.name %></strong> <span class="badge outline"><%= d.role %></span><br><span class="small muted"><%= d.email %></span></span>
+            </button>
+          </form>
+        </li>
+      <% } %>
+    </ul>
+  </section>
+  <% } %>
+</div>
+<%- include('partials/foot') %>

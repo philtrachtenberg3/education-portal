@@ -1,0 +1,24 @@
+<%
+  const typeLabels = { file: 'File upload', text: 'Text response', link: 'Web link' };
+  const diffZone = assignment.timezone !== tz;
+%>
+<dl class="facts">
+  <dt>Due</dt>
+  <dd><strong><%= fmt.dateTime(assignment.due_at) %></strong> <span class="muted">(<%= fmt.rel(assignment.due_at) %>)</span>
+    <% if (diffZone) { %><br><span class="small muted">Course time: <%= fmt.inZone(assignment.due_at, assignment.timezone) %></span><% } %></dd>
+  <% if (assignment.available_from || assignment.available_until) { %>
+    <dt>Open for submissions</dt>
+    <dd><%= assignment.available_from ? 'From ' + fmt.dateTime(assignment.available_from) : 'Now' %><%= assignment.available_until ? ' until ' + fmt.dateTime(assignment.available_until) : '' %></dd>
+  <% } %>
+  <dt>Points</dt><dd><%= fmt.points(assignment.points) %></dd>
+  <dt>Submit as</dt><dd><%= types.map((t) => typeLabels[t]).join(' or ') %></dd>
+  <% if (types.includes('file')) { %>
+    <dt>Accepted files</dt><dd><%= assignment.allowed_extensions.split(',').map((e) => '.' + e).join(', ') %> · up to <%= assignment.max_file_mb %> MB each, 5 files max</dd>
+  <% } %>
+  <dt>Resubmission</dt>
+  <dd><%= assignment.allow_resubmission ? 'You can replace your submission until it is graded. Every earlier version is kept.' : 'One submission only.' %>
+      <%= assignment.allow_late ? 'Late submissions are accepted and marked late.' : 'Submissions close at the deadline.' %></dd>
+  <% if (assignment.late_policy) { %><dt>Late policy</dt><dd><%= assignment.late_policy %></dd><% } %>
+  <dt>Work type</dt>
+  <dd><% if (groupSet) { %>Group work (<%= groupSet.name %>) — one submission per group, credited to every confirmed member. <%= assignment.group_grading === 'shared' ? 'All members receive the same grade and feedback.' : 'Each member is graded individually.' %><% } else { %>Individual<% } %></dd>
+</dl>

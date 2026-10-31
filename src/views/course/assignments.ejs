@@ -1,0 +1,45 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<div class="page-head">
+  <h1 style="margin:0">Assignments</h1>
+  <% if (rows) { %><a class="btn" href="/courses/<%= course.id %>/assignments/new">New assignment</a><% } %>
+</div>
+<% if (items) {
+     const now = new Date().toISOString();
+     const upcoming = items.filter((a) => a.due_at >= now);
+     const past = items.filter((a) => a.due_at < now).reverse(); %>
+  <section class="card" aria-labelledby="up-h">
+    <h2 id="up-h">Upcoming</h2>
+    <% if (!upcoming.length) { %><p class="empty">Nothing upcoming in this course.</p><% } else { %>
+      <ul class="list"><% for (const a of upcoming) { %><%- include('../partials/assignment-item', { a }) %><% } %></ul>
+    <% } %>
+  </section>
+  <section class="card" aria-labelledby="past-h">
+    <h2 id="past-h">Past</h2>
+    <% if (!past.length) { %><p class="empty">No past assignments.</p><% } else { %>
+      <ul class="list"><% for (const a of past) { %><%- include('../partials/assignment-item', { a }) %><% } %></ul>
+    <% } %>
+  </section>
+<% } else { %>
+  <% if (!rows.length) { %><p class="empty">No assignments yet. Create one to get started.</p><% } else { %>
+  <div class="table-wrap">
+    <table>
+      <caption class="visually-hidden">Assignments in <%= course.code %></caption>
+      <thead><tr><th scope="col">Title</th><th scope="col">Due</th><th scope="col">Visibility</th><th scope="col">Type</th><th scope="col" class="num">Submissions</th><th scope="col">Actions</th></tr></thead>
+      <tbody>
+        <% for (const a of rows) { %>
+          <tr>
+            <th scope="row" style="font-weight:600"><a href="/courses/<%= course.id %>/assignments/<%= a.id %>"><%= a.title %></a><br><span class="small muted"><%= KIND_LABEL[a.kind] %> · <%= fmt.points(a.points) %> pts</span></th>
+            <td class="small"><%= fmt.dateTime(a.due_at) %></td>
+            <td><%- a.published ? '<span class="badge ok">✓ Published</span>' : '<span class="badge warn">✎ Draft</span>' %></td>
+            <td class="small"><%= a.group_set_id ? `Group (${a.group_set_name}) · ${a.group_grading} grading` : 'Individual' %></td>
+            <td class="num"><%= a.submission_count %></td>
+            <td class="small"><a href="/courses/<%= course.id %>/assignments/<%= a.id %>/submissions">Submissions<span class="visually-hidden"> for <%= a.title %></span></a> · <a href="/courses/<%= course.id %>/assignments/<%= a.id %>/edit">Edit<span class="visually-hidden"> <%= a.title %></span></a></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+<% } %>
+<%- include('../partials/foot') %>

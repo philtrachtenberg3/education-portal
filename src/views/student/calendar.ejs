@@ -1,0 +1,62 @@
+<%- include('../partials/head') %>
+<div class="page-head">
+  <div><h1>Timetable &amp; calendar</h1><p>Class meetings, deadlines, exams and events. Times in <%= tz.replace(/_/g, ' ') %>.</p></div>
+  <%- include('../partials/view-switch') %>
+</div>
+<form method="get" action="/calendar" class="card filters" aria-label="Calendar options">
+  <div class="field">
+    <label for="c-course">Course</label>
+    <select id="c-course" name="course">
+      <option value="">All courses</option>
+      <% for (const c of courses) { %><option value="<%= c.id %>" <%= courseId === c.id ? 'selected' : '' %>><%= c.code %> — <%= c.nickname || c.title %></option><% } %>
+    </select>
+  </div>
+  <div class="field">
+    <label for="c-view">View</label>
+    <select id="c-view" name="view">
+      <option value="week" <%= view === 'week' ? 'selected' : '' %>>Weekly timetable</option>
+      <option value="list" <%= view === 'list' ? 'selected' : '' %>>List (next 4 weeks)</option>
+    </select>
+  </div>
+  <% if (view === 'week') { %><input type="hidden" name="week" value="<%= start.toISODate() %>"><% } %>
+  <div class="actions"><button class="btn" type="submit">Show</button><a class="btn secondary" href="/calendar.ics">Download .ics</a></div>
+</form>
+
+<% if (view === 'week') { const q = (w) => `?week=${w}${courseId ? '&course=' + courseId : ''}`; %>
+  <div class="page-head" style="align-items:center">
+    <h2 style="margin:0">Week of <%= start.toFormat('d LLLL yyyy') %></h2>
+    <nav class="item-actions" aria-label="Change week">
+      <a class="btn secondary small" href="<%= q(prevWeek) %>">← Previous week</a>
+      <% if (!isThisWeek) { %><a class="btn secondary small" href="<%= courseId ? '?course=' + courseId : '?' %>">This week</a><% } %>
+      <a class="btn secondary small" href="<%= q(nextWeek) %>">Next week →</a>
+    </nav>
+  </div>
+  <%- include('../partials/week') %>
+<% } else { %>
+  <section class="card">
+    <h2>Next 4 weeks</h2>
+    <% const withItems = days.filter((d) => d.items.length); %>
+    <% if (!withItems.length) { %><p class="empty">Nothing scheduled in the next four weeks.</p><% } %>
+    <% for (const d of withItems) { %>
+      <h3 style="margin-top:1rem"><%= d.date.toFormat('cccc d LLLL') %></h3>
+      <ul class="list">
+        <% for (const i of d.items) { %>
+          <li class="item">
+            <div class="item-main">
+              <span class="badge outline"><span aria-hidden="true"><%= TYPE_INFO[i.type].icon %></span> <%= TYPE_INFO[i.type].label %></span>
+              <span class="item-title" style="display:inline"><% if (i.link) { %><a href="<%= i.link %>"><%= i.title %></a><% } else { %><%= i.title %><% } %></span>
+              <% if (i.cancelled) { %><strong class="badge bad">Cancelled</strong><% } %>
+              <div class="item-meta">
+                <%- include('../partials/course-chip', { c: i.course }) %>
+                <span><%= i.type === 'deadline' ? 'Due ' + fmt.dateTime(i.start) : fmt.range(i.start, i.end) %></span>
+                <% if (i.location) { %><span><%= i.location %></span><% } %>
+                <% if (i.url && !i.cancelled) { %><a href="<%= i.url %>" rel="noopener">Online link</a><% } %>
+              </div>
+            </div>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+<% } %>
+<%- include('../partials/foot') %>

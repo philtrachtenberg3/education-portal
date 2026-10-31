@@ -1,0 +1,24 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<% const a = assignment; const base = `/courses/${course.id}/assignments/${a.id}`; %>
+<div class="page-head">
+  <div>
+    <p class="small muted" style="margin:0"><%= KIND_LABEL[a.kind] %> · <%= course.code %></p>
+    <h1><%= a.title %></h1>
+  </div>
+  <%- a.published ? '<span class="badge ok">✓ Published</span>' : '<span class="badge warn">✎ Draft — students cannot see this</span>' %>
+</div>
+<div class="card item-actions" style="margin-bottom:1rem">
+  <a class="btn" href="<%= base %>/submissions">Submissions (<%= counts.submitted %> of <%= counts.total %>)</a>
+  <a class="btn secondary" href="<%= base %>/edit">Edit</a>
+  <a class="btn secondary" href="<%= base %>/preview">Preview as student</a>
+  <form method="post" action="<%= base %>/publish" class="inline" <%- a.published ? 'data-confirm="Hide this assignment from students?"' : '' %>>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn <%= a.published ? 'danger' : '' %>" type="submit"><%= a.published ? 'Unpublish' : 'Publish and notify students' %></button>
+  </form>
+</div>
+<div class="dash">
+  <section class="card"><h2>Instructions</h2><div class="prewrap"><%= a.instructions || 'No instructions.' %></div></section>
+  <section class="card"><h2>Settings</h2><%- include('../partials/assignment-facts') %></section>
+</div>
+<%- include('../partials/foot') %>

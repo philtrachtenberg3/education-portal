@@ -1,0 +1,28 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<div class="page-head">
+  <div><h1>Gradebook</h1><p>Published assignments only. <span class="badge warn">*</span> marks grades saved but not yet released to the student.</p></div>
+  <a class="btn secondary" href="/courses/<%= course.id %>/grades.csv">Export CSV</a>
+</div>
+<% if (!students.length || !assignments.length) { %><p class="empty">The gradebook fills in once students are enrolled and assignments are published.</p><% } else { %>
+<div class="table-wrap gradebook">
+  <table>
+    <caption class="visually-hidden">Gradebook for <%= course.code %></caption>
+    <thead><tr><th scope="col">Student</th><% for (const a of assignments) { %><th scope="col" class="num"><a href="/courses/<%= course.id %>/assignments/<%= a.id %>/submissions"><%= a.title %></a><br><span class="small muted"><%= fmt.points(a.points) %> pts<%= a.group_set_id ? ' · group' : '' %></span></th><% } %></tr></thead>
+    <tbody>
+      <% for (const s of students) { %>
+        <tr>
+          <th scope="row"><%= s.name %></th>
+          <% for (const a of assignments) { const c = cells[s.id][a.id]; %>
+            <td class="num"><a href="/courses/<%= course.id %>/assignments/<%= a.id %>/grade/<%= c.key %>" aria-label="<%= s.name %>, <%= a.title %>">
+              <% if (c.grade && c.grade.excused) { %>EX<% } else if (c.grade && c.grade.points != null) { %><%= fmt.points(c.grade.points) %><% } else if (c.submission) { %><span class="small">Not graded</span><% } else { %><span class="small muted">—</span><% } %></a><% if (c.grade && !c.grade.released && (c.grade.points != null || c.grade.excused)) { %><span class="badge warn" title="Not released">*</span><span class="visually-hidden"> not released</span><% } %>
+            </td>
+          <% } %>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<p class="small muted" style="margin-top:.5rem">— not submitted · EX excused · “Not graded” submitted but no score yet</p>
+<% } %>
+<%- include('../partials/foot') %>

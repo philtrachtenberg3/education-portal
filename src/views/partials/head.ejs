@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title ? title + ' · ' : '' %>Student Learning Portal</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">SL</span> Student Learning Portal</a>
+    <% if (user) { %>
+      <nav class="user-nav" aria-label="Account">
+        <ul>
+          <li><a href="/notifications" <%- path === '/notifications' ? 'aria-current="page"' : '' %>>Notifications<% if (unread) { %> <span class="count"><%= unread %></span><span class="visually-hidden"> unread</span><% } %></a></li>
+          <li><a href="/settings" <%- path === '/settings' ? 'aria-current="page"' : '' %>>Settings</a></li>
+          <li>
+            <form method="post" action="/logout" class="inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="linklike" style="padding:.45rem .7rem">Sign out <span class="visually-hidden"><%= user.name %></span></button>
+            </form>
+          </li>
+        </ul>
+      </nav>
+    <% } %>
+  </div>
+  <% if (user) {
+       const navs = {
+         student: [['/dashboard', 'Dashboard'], ['/assignments', 'Assignments'], ['/calendar', 'Timetable'], ['/grades', 'Grades'], ['/courses', 'Courses']],
+         instructor: [['/teach', 'Teaching'], ['/courses', 'Courses']],
+         admin: [['/admin', 'Overview'], ['/admin/users', 'Accounts'], ['/admin/courses', 'Courses & terms'], ['/admin/audit', 'Audit log'], ['/admin/import', 'Import & export']],
+       }[user.role];
+       const active = (href) => path === href || (href !== '/admin' && path.startsWith(href + '/')) || (href === '/courses' && path.startsWith('/courses/'));
+  %>
+  <div class="nav-row">
+    <nav class="main-nav" aria-label="Main">
+      <ul>
+        <% for (const [href, label] of navs) { %>
+          <li><a href="<%= href %>" <%- active(href) ? 'aria-current="page"' : '' %>><%= label %></a></li>
+        <% } %>
+      </ul>
+    </nav>
+  </div>
+  <% } %>
+</header>
+<main id="main" tabindex="-1">
+<% if (flash) { %>
+  <div class="notice <%= flash.type === 'error' ? 'bad' : 'ok' %>" role="<%= flash.type === 'error' ? 'alert' : 'status' %>"><%= flash.message %></div>
+<% } %>

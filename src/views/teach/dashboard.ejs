@@ -1,0 +1,92 @@
+<%- include('../partials/head') %>
+<div class="page-head"><div><h1>Teaching dashboard</h1><p><%= courses.length %> course<%= courses.length === 1 ? '' : 's' %> this term · times in <%= tz.replace(/_/g, ' ') %></p></div></div>
+
+<% if (!courses.length) { %>
+  <p class="empty">You are not assigned to teach any active courses. Course assignments are managed by your administrator.</p>
+<% } else { %>
+<div class="dash">
+  <div class="stack">
+    <section class="card" aria-labelledby="grade-h">
+      <h2 id="grade-h">Needs grading</h2>
+      <% if (!toGrade.length) { %>
+        <p class="empty">You are all caught up — no submissions are waiting.</p>
+      <% } else { %>
+        <ul class="list">
+          <% for (const a of toGrade) { %>
+            <li class="item">
+              <div class="item-main">
+                <a class="item-title" href="/courses/<%= a.course_id %>/assignments/<%= a.id %>/submissions?status=needs_grading"><%= a.title %></a>
+                <div class="item-meta"><%- include('../partials/course-chip', { c: a }) %><span>Due <%= fmt.dateTime(a.due_at) %></span><% if (a.group_set_id) { %><span class="badge outline">Group</span><% } %></div>
+              </div>
+              <span class="badge warn"><%= a.waiting %> waiting</span>
+            </li>
+          <% } %>
+        </ul>
+      <% } %>
+    </section>
+
+    <section class="card" aria-labelledby="act-h">
+      <h2 id="act-h">Recent student activity</h2>
+      <% if (!activity.length) { %><p class="empty">No submissions yet.</p><% } else { %>
+        <ul class="list">
+          <% for (const v of activity) { %>
+            <li class="item">
+              <div class="item-main">
+                <span class="item-title"><%= v.group_name ? `${v.group_name} (submitted by ${v.submitter})` : v.submitter %></span>
+                <div class="item-meta">
+                  <%- include('../partials/course-chip', { c: v }) %>
+                  <a href="/courses/<%= v.course_id %>/assignments/<%= v.assignment_id %>/submissions"><%= v.title %></a>
+                  <span><%= v.version > 1 ? `Resubmitted (v${v.version})` : 'Submitted' %> <%= fmt.rel(v.submitted_at) %></span>
+                  <% if (v.is_late) { %><span class="badge warn">Late</span><% } %>
+                </div>
+              </div>
+            </li>
+          <% } %>
+        </ul>
+      <% } %>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card" aria-labelledby="up-h">
+      <h2 id="up-h">Teaching this week</h2>
+      <% if (!upcoming.length) { %><p class="empty">No classes or events in the next 7 days.</p><% } else { %>
+        <ul class="ev-list">
+          <% for (const i of upcoming.slice(0, 8)) { %>
+            <li class="ev <%= i.type %> <%= i.cancelled ? 'cancelled' : '' %>" style="--course: <%= i.course.color %>">
+              <span class="type"><span aria-hidden="true"><%= TYPE_INFO[i.type].icon %></span> <%= TYPE_INFO[i.type].label %></span>
+              <span class="t"><%= i.course.code %> <%= i.title %></span>
+              <% if (i.cancelled) { %><strong class="badge bad">Cancelled</strong><% } %>
+              <div><%= fmt.date(i.start) %>, <%= fmt.range(i.start, i.end) %></div>
+              <div class="small"><%= i.location %></div>
+            </li>
+          <% } %>
+        </ul>
+      <% } %>
+    </section>
+
+    <section class="card" aria-labelledby="courses-h">
+      <h2 id="courses-h">Your courses</h2>
+      <ul class="list">
+        <% for (const c of courses) {
+             const pending = (pendingMembers.find((p) => p.course_id === c.id) || {}).n;
+             const draft = (drafts.find((d) => d.course_id === c.id) || {}).n; %>
+          <li>
+            <a class="item-title" href="/courses/<%= c.id %>"><%- include('../partials/course-chip', { c }) %> <%= c.title %></a>
+            <div class="item-meta">
+              <% if (pending) { %><a href="/courses/<%= c.id %>/groups"><span class="badge warn"><%= pending %> group request<%= pending === 1 ? '' : 's' %></span></a><% } %>
+              <% if (draft) { %><a href="/courses/<%= c.id %>/assignments"><span class="badge outline"><%= draft %> draft assignment<%= draft === 1 ? '' : 's' %></span></a><% } %>
+            </div>
+            <div class="item-actions small" style="margin-top:.35rem">
+              <a href="/courses/<%= c.id %>#new-announcement">+ Announcement</a>
+              <a href="/courses/<%= c.id %>/materials/new">+ Material</a>
+              <a href="/courses/<%= c.id %>/assignments/new">+ Assignment</a>
+            </div>
+          </li>
+        <% } %>
+      </ul>
+    </section>
+  </div>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

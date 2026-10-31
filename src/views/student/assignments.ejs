@@ -1,0 +1,35 @@
+<%- include('../partials/head') %>
+<div class="page-head">
+  <div><h1>Assignments</h1><p>Every assignment, quiz and task across your active courses.</p></div>
+  <%- include('../partials/view-switch') %>
+</div>
+<form method="get" action="/assignments" class="card filters" role="search" aria-label="Filter assignments">
+  <div class="field">
+    <label for="f-course">Course</label>
+    <select id="f-course" name="course">
+      <option value="">All courses</option>
+      <% for (const c of courses) { %><option value="<%= c.id %>" <%= filters.course === c.id ? 'selected' : '' %>><%= c.code %> — <%= c.nickname || c.title %></option><% } %>
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-status">Show</label>
+    <select id="f-status" name="status">
+      <% for (const [v, l] of [['upcoming', 'Upcoming'], ['todo', 'To do (not yet submitted)'], ['missing', 'Past due, not submitted'], ['completed', 'Submitted & graded (history)'], ['all', 'Everything']]) { %>
+        <option value="<%= v %>" <%= filters.status === v ? 'selected' : '' %>><%= l %></option>
+      <% } %>
+    </select>
+  </div>
+  <div class="field"><label for="f-from">Due from</label><input id="f-from" type="date" name="from" value="<%= filters.from %>"></div>
+  <div class="field"><label for="f-to">Due until</label><input id="f-to" type="date" name="to" value="<%= filters.to %>"></div>
+  <div class="actions"><button class="btn" type="submit">Apply filters</button><a class="btn secondary" href="/assignments">Reset</a></div>
+</form>
+<section class="card" aria-labelledby="results-h">
+  <h2 id="results-h" aria-live="polite"><%= total %> item<%= total === 1 ? '' : 's' %></h2>
+  <% if (!items.length) { %>
+    <p class="empty"><%= filters.status === 'missing' ? 'Nothing past due — you are up to date.' : 'No assignments match these filters.' %></p>
+  <% } else { %>
+    <ul class="list"><% for (const a of items) { %><%- include('../partials/assignment-item', { a }) %><% } %></ul>
+  <% } %>
+  <%- include('../partials/pager') %>
+</section>
+<%- include('../partials/foot') %>

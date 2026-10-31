@@ -1,0 +1,79 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<% const isInstructor = courseRole === 'instructor'; %>
+<div class="page-head" style="align-items:center">
+  <h1 style="margin:0">Schedule · week of <%= start.toFormat('d LLLL') %></h1>
+  <nav class="item-actions" aria-label="Change week">
+    <a class="btn secondary small" href="?week=<%= prevWeek %>">← Previous week</a>
+    <% if (!isThisWeek) { %><a class="btn secondary small" href="?">This week</a><% } %>
+    <a class="btn secondary small" href="?week=<%= nextWeek %>">Next week →</a>
+  </nav>
+</div>
+<%- include('../partials/week') %>
+
+<div class="grid grid-2" style="margin-top:1rem">
+  <section class="card" aria-labelledby="rec-h">
+    <h2 id="rec-h">Regular class meetings</h2>
+    <% if (!meetings.length) { %><p class="empty">No regular meetings.</p><% } else { %>
+      <ul class="list">
+        <% for (const m of meetings) { %>
+          <li><strong><%= m.title %></strong> <span class="badge outline"><%= m.kind %></span><br>
+            <span class="small">Every <%= WEEKDAYS[m.weekday] %>, <%= m.start_time %>–<%= m.end_time %> (<%= m.timezone.replace(/_/g, ' ') %> local time) · <%= m.location %><% if (m.meeting_url) { %> · <a href="<%= m.meeting_url %>" rel="noopener">online link</a><% } %></span></li>
+        <% } %>
+      </ul>
+    <% } %>
+    <% if (exceptions.length) { %>
+      <h3 style="margin-top:1rem">Changes &amp; cancellations</h3>
+      <ul class="list small">
+        <% for (const x of exceptions) { %>
+          <li><span class="badge <%= x.status === 'cancelled' ? 'bad' : 'warn' %>"><%= x.status === 'cancelled' ? 'Cancelled' : 'Changed' %></span> <%= x.meeting_title %> on <%= x.date %><%= x.location ? ` — now in ${x.location}` : '' %><% if (x.note) { %><br><span class="muted"><%= x.note %></span><% } %></li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+
+  <section class="card" aria-labelledby="ev-h">
+    <h2 id="ev-h">Exams &amp; events</h2>
+    <% if (!upcomingEvents.length) { %><p class="empty">No upcoming exams or events.</p><% } else { %>
+      <ul class="list">
+        <% for (const e of upcomingEvents) { %>
+          <li><span class="badge outline"><span aria-hidden="true"><%= TYPE_INFO[e.kind].icon %></span> <%= TYPE_INFO[e.kind].label %></span> <strong><%= e.title %></strong><br>
+            <span class="small"><%= fmt.date(e.starts_at) %>, <%= fmt.range(e.starts_at, e.ends_at) %> · <%= e.location %><% if (e.meeting_url) { %> · <a href="<%= e.meeting_url %>" rel="noopener">online link</a><% } %></span></li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+</div>
+
+<% if (isInstructor) { %>
+<div class="grid grid-2" style="margin-top:1rem">
+  <form id="add-event" class="card" method="post" action="/courses/<%= course.id %>/schedule/events">
+    <h2>Add an exam or event</h2>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field"><label for="ev-title">Title</label><input id="ev-title" type="text" name="title" required></div>
+    <div class="field"><label for="ev-kind">Type</label><select id="ev-kind" name="kind"><option value="exam">Exam</option><option value="event">Event</option></select></div>
+    <div class="field-row">
+      <div class="field"><label for="ev-start">Starts (<%= tz %>)</label><input id="ev-start" type="datetime-local" name="starts_at" required></div>
+      <div class="field"><label for="ev-end">Ends</label><input id="ev-end" type="datetime-local" name="ends_at" required></div>
+    </div>
+    <div class="field"><label for="ev-loc">Location</label><input id="ev-loc" type="text" name="location"></div>
+    <div class="field"><label for="ev-url">Online link (optional)</label><input id="ev-url" type="url" name="meeting_url"></div>
+    <button class="btn" type="submit">Add and notify students</button>
+  </form>
+  <form id="change-meeting" class="card" method="post" action="/courses/<%= course.id %>/schedule/exceptions">
+    <h2>Cancel or move one class</h2>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field"><label for="ex-m">Class meeting</label>
+      <select id="ex-m" name="meeting_id"><% for (const m of meetings) { %><option value="<%= m.id %>"><%= m.title %> — <%= WEEKDAYS[m.weekday] %> <%= m.start_time %></option><% } %></select></div>
+    <div class="field"><label for="ex-date">Date</label><span class="hint">Must be a day this class meets.</span><input id="ex-date" type="date" name="date" required></div>
+    <fieldset><legend>Change</legend>
+      <label class="check"><input type="radio" name="status" value="cancelled" checked> Cancel this class</label>
+      <label class="check"><input type="radio" name="status" value="changed"> Move to another room</label>
+    </fieldset>
+    <div class="field"><label for="ex-loc">New location (if moving)</label><input id="ex-loc" type="text" name="location"></div>
+    <div class="field"><label for="ex-note">Note for students</label><input id="ex-note" type="text" name="note"></div>
+    <button class="btn" type="submit">Save and notify students</button>
+  </form>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

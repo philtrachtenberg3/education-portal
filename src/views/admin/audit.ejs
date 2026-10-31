@@ -1,0 +1,14 @@
+<%- include('../partials/head') %>
+<h1>Audit log</h1>
+<p class="muted">Grade changes, group membership changes, publication changes and administrative actions. Entries cannot be edited or deleted.</p>
+<form method="get" class="card filters" role="search" aria-label="Filter audit log">
+  <div class="field"><label for="act">Action starts with</label><input id="act" type="text" name="action" value="<%= filters.action %>" placeholder="grade., group., admin."></div>
+  <div class="field"><label for="crs">Course</label><select id="crs" name="course"><option value="">All</option><% for (const c of courses) { %><option value="<%= c.id %>" <%= filters.course === c.id ? 'selected' : '' %>><%= c.code %></option><% } %></select></div>
+  <div class="actions"><button class="btn" type="submit">Filter</button></div>
+</form>
+<p class="small muted"><%= total %> event<%= total === 1 ? '' : 's' %></p>
+<div class="table-wrap"><table><caption class="visually-hidden">Audit events</caption>
+  <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Action</th><th scope="col">Record</th><th scope="col">Change</th></tr></thead>
+  <tbody><% for (const e of events) { %><%- include('../partials/audit-row', { e }) %><% } %></tbody></table></div>
+<%- include('../partials/pager') %>
+<%- include('../partials/foot') %>

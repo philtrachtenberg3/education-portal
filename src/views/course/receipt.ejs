@@ -1,0 +1,31 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<% const a = assignment; %>
+<div class="card" style="max-width:760px" aria-labelledby="rc-h">
+  <p class="badge ok" style="margin-bottom:.5rem">✓ Submission received</p>
+  <h1 id="rc-h">Submission receipt</h1>
+  <dl class="facts">
+    <dt>Assignment</dt><dd><a href="/courses/<%= course.id %>/assignments/<%= a.id %>"><%= a.title %></a></dd>
+    <dt>Course</dt><dd><%= course.code %> — <%= course.title %></dd>
+    <dt>Version</dt><dd><%= v.version %><%= v.version === submission.current_version ? ' (current)' : ` (superseded by version ${submission.current_version})` %></dd>
+    <dt>Submitted</dt><dd><strong><%= fmt.dateTime(v.submitted_at) %></strong><% if (v.is_late) { %> <span class="badge warn">Late</span><% } %></dd>
+    <dt>Submitted by</dt><dd><%= v.submitter_name %><%= group ? ` on behalf of ${group.name}` : '' %></dd>
+    <dt>Credited to</dt><dd><%= credited.map((c) => c.name).join(', ') %></dd>
+    <dt>Files</dt>
+    <dd><% if (!v.files.length) { %>None<% } %><ul class="list"><% for (const f of v.files) { %><li><a href="/files/submissions/<%= f.id %>"><%= f.original_name %></a> (<%= fmt.size(f.size) %>)</li><% } %></ul></dd>
+    <% if (v.body_text) { %><dt>Text response</dt><dd class="prewrap"><%= v.body_text %></dd><% } %>
+    <% if (v.link_url) { %><dt>Link</dt><dd><a href="<%= v.link_url %>" rel="noopener noreferrer"><%= v.link_url %></a></dd><% } %>
+    <dt>Receipt ID</dt><dd><code>SUB-<%= submission.id %>-V<%= v.version %></code></dd>
+  </dl>
+  <div class="form-actions no-print">
+    <a class="btn" href="/courses/<%= course.id %>/assignments/<%= a.id %>">Back to assignment</a>
+    <% if (courseRole === 'student') { %><a class="btn secondary" href="/dashboard">Dashboard</a><% } %>
+  </div>
+  <% if (versions.length > 1) { %>
+    <h2 style="margin-top:1.25rem">All versions</h2>
+    <ul class="list">
+      <% for (const x of versions) { %><li><a href="?v=<%= x.version %><%= courseRole === 'instructor' ? '&s=' + submission.id : '' %>">Version <%= x.version %></a> — <%= fmt.dateTime(x.submitted_at) %> by <%= x.submitter_name %></li><% } %>
+    </ul>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

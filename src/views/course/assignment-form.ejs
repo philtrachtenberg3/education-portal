@@ -1,0 +1,65 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<% const types = (a.submission_types || '').split(','); const action = a.id ? `/courses/${course.id}/assignments/${a.id}` : `/courses/${course.id}/assignments`; %>
+<h1><%= a.id ? 'Edit assignment' : 'New assignment' %></h1>
+<% if (a.id && a.published) { %><div class="notice warn">This assignment is published. Saving changes notifies students; a changed due date is recorded in the audit log.</div><% } %>
+<%- include('../partials/errors') %>
+<form method="post" action="<%= action %>" class="card" data-warn-unsaved>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="field-row">
+    <div class="field"><label for="title">Title</label><input id="title" type="text" name="title" required maxlength="200" value="<%= a.title || '' %>"></div>
+    <div class="field"><label for="kind">Type</label>
+      <select id="kind" name="kind"><% for (const k of ['assignment', 'quiz', 'task']) { %><option value="<%= k %>" <%= a.kind === k ? 'selected' : '' %>><%= KIND_LABEL[k] %></option><% } %></select></div>
+    <div class="field"><label for="points">Points</label><input id="points" type="number" name="points" min="0" step="0.5" required value="<%= a.points %>"></div>
+  </div>
+  <div class="field"><label for="instructions">Instructions</label><textarea id="instructions" name="instructions" rows="8"><%= a.instructions || '' %></textarea></div>
+
+  <fieldset>
+    <legend>Dates</legend>
+    <div class="field"><label for="timezone">Time zone for these dates</label>
+      <span class="hint">Deadlines are stored as exact moments. Students see them converted to their own time zone, with the zone shown.</span>
+      <select id="timezone" name="timezone">
+        <% for (const z of [...new Set([a.timezone, tz, 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'UTC'])]) { %><option value="<%= z %>" <%= z === a.timezone ? 'selected' : '' %>><%= z %></option><% } %>
+      </select></div>
+    <div class="field-row">
+      <div class="field"><label for="due_at">Due</label><input id="due_at" type="datetime-local" name="due_at" required value="<%= fmt.input(a.due_at, a.timezone) %>"></div>
+      <div class="field"><label for="available_from">Opens (optional)</label><input id="available_from" type="datetime-local" name="available_from" value="<%= fmt.input(a.available_from, a.timezone) %>"></div>
+      <div class="field"><label for="available_until">Closes (optional)</label><input id="available_until" type="datetime-local" name="available_until" value="<%= fmt.input(a.available_until, a.timezone) %>"></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Submission</legend>
+    <p class="label">Students can submit</p>
+    <% for (const [v, l] of [['file', 'File upload'], ['text', 'Text response'], ['link', 'Web link']]) { %>
+      <label class="check"><input type="checkbox" name="submission_types" value="<%= v %>" <%= types.includes(v) ? 'checked' : '' %>> <%= l %></label>
+    <% } %>
+    <div class="field-row">
+      <div class="field"><label for="ext">Accepted file types</label><span class="hint">Comma-separated, e.g. pdf, docx, zip</span><input id="ext" type="text" name="allowed_extensions" value="<%= a.allowed_extensions %>"></div>
+      <div class="field"><label for="mb">Max file size (MB)</label><input id="mb" type="number" name="max_file_mb" min="1" max="100" value="<%= a.max_file_mb %>"></div>
+    </div>
+    <label class="check"><input type="checkbox" name="allow_resubmission" value="1" <%= a.allow_resubmission ? 'checked' : '' %>> Allow resubmission until graded (all versions are kept)</label>
+    <label class="check"><input type="checkbox" name="allow_late" value="1" <%= a.allow_late ? 'checked' : '' %>> Accept late submissions (marked late)</label>
+    <div class="field"><label for="late_policy">Late-work policy shown to students (optional)</label><input id="late_policy" type="text" name="late_policy" value="<%= a.late_policy || '' %>"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Individual or group work</legend>
+    <div class="field"><label for="gs">Who submits</label>
+      <select id="gs" name="group_set_id">
+        <option value="">Individual — each student submits</option>
+        <% for (const g of groupSets) { %><option value="<%= g.id %>" <%= a.group_set_id === g.id ? 'selected' : '' %>>Group — one submission per group in “<%= g.name %>”</option><% } %>
+      </select>
+      <% if (!groupSets.length) { %><span class="hint">To set group work, first create a group set on the <a href="/courses/<%= course.id %>/groups">Groups</a> page.</span><% } %>
+    </div>
+    <p class="label">Group grading</p>
+    <label class="check"><input type="radio" name="group_grading" value="shared" <%= a.group_grading !== 'individual' ? 'checked' : '' %>> Shared grade and feedback for all members (you can still adjust one member)</label>
+    <label class="check"><input type="radio" name="group_grading" value="individual" <%= a.group_grading === 'individual' ? 'checked' : '' %>> Individual grade and feedback per member</label>
+  </fieldset>
+
+  <div class="form-actions">
+    <button class="btn" type="submit"><%= a.id ? 'Save changes' : 'Save draft and preview' %></button>
+    <a class="btn secondary" href="/courses/<%= course.id %>/assignments<%= a.id ? '/' + a.id : '' %>">Cancel</a>
+  </div>
+</form>
+<%- include('../partials/foot') %>

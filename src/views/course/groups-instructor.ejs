@@ -1,0 +1,69 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<h1>Groups</h1>
+<p class="muted">One submission per group is credited to every confirmed member. After a group submits, membership changes require a reason and never remove credit already earned. Every change is recorded in the audit log.</p>
+<% for (const set of sets) { %>
+  <section class="card" id="set-<%= set.id %>" aria-labelledby="set-h-<%= set.id %>">
+    <header>
+      <h2 id="set-h-<%= set.id %>"><%= set.name %></h2>
+      <span class="small muted">Max <%= set.max_size %> · <%= set.student_created ? 'student-created' : 'instructor-assigned' %> · <%= set.requires_approval ? 'approval required' : 'no approval' %><%= set.membership_deadline ? ` · deadline ${fmt.dateTime(set.membership_deadline)}` : '' %></span>
+    </header>
+    <% if (set.assignments.length) { %><p class="small">Assignments: <% set.assignments.forEach((a, i) => { %><%= i ? ', ' : '' %><a href="/courses/<%= course.id %>/assignments/<%= a.id %>/submissions"><%= a.title %></a> (<%= a.group_grading %>)<% }) %></p><% } %>
+    <div class="grid grid-3">
+      <% for (const g of set.groups) { %>
+        <article class="card" style="margin:0" aria-labelledby="g-<%= g.id %>">
+          <h3 id="g-<%= g.id %>"><%= g.name %> <% if (g.locked) { %><span class="badge info">Has submitted</span><% } %></h3>
+          <% if (!g.members.length) { %><p class="small muted">No members.</p><% } %>
+          <ul class="list small">
+            <% for (const m of g.members) { %>
+              <li>
+                <strong><%= m.name %></strong> <%- m.status === 'pending' ? '<span class="badge warn">Pending</span>' : '' %>
+                <div class="item-actions" style="margin-top:.3rem">
+                  <% if (m.status === 'pending') { %>
+                    <form method="post" action="/courses/<%= course.id %>/groups/<%= g.id %>/members/<%= m.id %>/approve" class="inline"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn small" type="submit">Approve<span class="visually-hidden"> <%= m.name %></span></button></form>
+                    <form method="post" action="/courses/<%= course.id %>/groups/<%= g.id %>/members/<%= m.id %>/reject" class="inline"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn secondary small" type="submit">Decline<span class="visually-hidden"> <%= m.name %></span></button></form>
+                  <% } else { %>
+                    <form method="post" action="/courses/<%= course.id %>/groups/<%= g.id %>/members/<%= m.id %>/remove" class="filters" style="margin:0" data-confirm="Remove <%= m.name %> from <%= g.name %>?">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <% if (g.locked) { %><div class="field" style="margin:0"><label for="r-<%= g.id %>-<%= m.id %>" class="small">Reason (required)</label><input id="r-<%= g.id %>-<%= m.id %>" type="text" name="reason" required></div><% } %>
+                      <button class="btn danger small" type="submit">Remove<span class="visually-hidden"> <%= m.name %></span></button>
+                    </form>
+                  <% } %>
+                </div>
+              </li>
+            <% } %>
+          </ul>
+          <% if (set.ungrouped.length) { %>
+            <form method="post" action="/courses/<%= course.id %>/groups/<%= g.id %>/members" style="margin-top:.75rem">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="field" style="margin-bottom:.5rem"><label for="add-<%= g.id %>" class="small">Add student</label>
+                <select id="add-<%= g.id %>" name="student_id"><% for (const s of set.ungrouped) { %><option value="<%= s.id %>"><%= s.name %></option><% } %></select></div>
+              <% if (g.locked) { %><div class="field" style="margin-bottom:.5rem"><label for="ar-<%= g.id %>" class="small">Reason</label><input id="ar-<%= g.id %>" type="text" name="reason"><span class="hint">They will be credited for this group’s existing submissions.</span></div><% } %>
+              <label class="check small"><input type="checkbox" name="override_size" value="1"> Allow over size limit</label>
+              <button class="btn secondary small" type="submit">Add to <%= g.name %></button>
+            </form>
+          <% } %>
+        </article>
+      <% } %>
+    </div>
+    <% if (set.ungrouped.length) { %><p class="small" style="margin-top:.75rem"><strong>Not in a group:</strong> <%= set.ungrouped.map((s) => s.name).join(', ') %></p><% } %>
+    <form method="post" action="/courses/<%= course.id %>/groups/sets/<%= set.id %>/groups" class="filters" style="margin-top:.75rem">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field"><label for="ng-<%= set.id %>">New group name</label><input id="ng-<%= set.id %>" type="text" name="name" required maxlength="80"></div>
+      <div class="actions"><button class="btn secondary" type="submit">Create group</button></div>
+    </form>
+  </section>
+<% } %>
+<form id="new-set" class="card" method="post" action="/courses/<%= course.id %>/groups/sets" style="max-width:640px">
+  <h2>New group set</h2>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="field"><label for="gs-name">Name</label><span class="hint">e.g. “Project 3 teams”. Assignments choose a group set.</span><input id="gs-name" type="text" name="name" required></div>
+  <div class="field-row">
+    <div class="field"><label for="gs-max">Maximum group size</label><input id="gs-max" type="number" name="max_size" min="2" max="20" value="4" required></div>
+    <div class="field"><label for="gs-dl">Membership deadline (optional)</label><input id="gs-dl" type="datetime-local" name="membership_deadline"></div>
+  </div>
+  <label class="check"><input type="checkbox" name="student_created" value="1"> Students can create and join groups</label>
+  <label class="check"><input type="checkbox" name="requires_approval" value="1" checked> Student-initiated membership needs my approval</label>
+  <button class="btn" type="submit">Create group set</button>
+</form>
+<%- include('../partials/foot') %>

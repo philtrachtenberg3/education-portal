@@ -1,0 +1,31 @@
+<%- include('partials/head') %>
+<div class="page-head">
+  <div><h1>Notifications</h1><p>Updates about your courses. Email copies follow your <a href="/settings">notification settings</a>.</p></div>
+  <% if (items.some((n) => !n.read_at)) { %>
+    <form method="post" action="/notifications/read-all"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn secondary small">Mark all as read</button></form>
+  <% } %>
+</div>
+<div class="card">
+  <% if (!items.length) { %>
+    <p class="empty">No notifications yet.</p>
+  <% } else { %>
+  <ul class="list">
+    <% for (const n of items) { %>
+      <li class="item">
+        <div class="item-main">
+          <form method="post" action="/notifications/<%= n.id %>/open" class="inline">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="linklike item-title" type="submit" style="text-align:left"><%= n.title %></button>
+          </form>
+          <div class="item-meta">
+            <% if (n.course_code) { %><%- include('partials/course-chip', { c: n }) %><% } %>
+            <span><%= fmt.dateTime(n.created_at) %></span>
+          </div>
+        </div>
+        <% if (!n.read_at) { %><span class="badge info"><span aria-hidden="true">●</span> Unread</span><% } else { %><span class="small muted">Read</span><% } %>
+      </li>
+    <% } %>
+  </ul>
+  <% } %>
+</div>
+<%- include('partials/foot') %>

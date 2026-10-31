@@ -1,0 +1,24 @@
+{
+  "name": "student-learning-portal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Student Learning Portal MVP — courses, timetable, assignments, group submissions, grades and materials.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=18.18"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^11.10.0",
+    "ejs": "^7.0.2",
+    "express": "^4.22.3",
+    "luxon": "^3.7.2",
+    "multer": "^2.5.0"
+  }
+}

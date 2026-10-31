@@ -1,0 +1,33 @@
+<%- include('../partials/head') %>
+<h1>Import &amp; export</h1>
+<p class="muted">Simple CSV exchange for the prototype. In production, the student information system remains authoritative for people, courses and enrollments, and this boundary is replaced by an SIS sync.</p>
+<% if (result) { %>
+  <% if (result.errors.length) { %>
+    <%- include('../partials/errors', { errors: result.errors }) %>
+  <% } else { %>
+    <div class="notice ok" role="status">Imported <%= result.ok %> <%= result.type %> row<%= result.ok === 1 ? '' : 's' %>.</div>
+  <% } %>
+<% } %>
+<div class="dash">
+  <form class="card" method="post" action="/admin/import" enctype="multipart/form-data">
+    <h2>Import CSV</h2>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field"><label for="type">What are you importing?</label>
+      <select id="type" name="type"><% for (const [k, v] of Object.entries(IMPORTS)) { %><option value="<%= k %>" <%= result && result.type === k ? 'selected' : '' %>><%= k %></option><% } %></select></div>
+    <div class="field"><label for="file">CSV file</label><input id="file" type="file" name="file" accept=".csv,text/csv"></div>
+    <div class="field"><label for="csv">…or paste CSV</label><textarea id="csv" name="csv" rows="8" placeholder="name,email,role"></textarea></div>
+    <p class="small">The whole file is checked first: if any row has a problem, nothing is imported.</p>
+    <button class="btn" type="submit">Import</button>
+  </form>
+  <div class="stack">
+    <section class="card">
+      <h2>Expected columns</h2>
+      <dl class="facts small"><% for (const [k, v] of Object.entries(IMPORTS)) { %><dt><%= k %></dt><dd><code><%= v.columns.join(',') %></code><br><span class="muted"><%= v.help %></span></dd><% } %></dl>
+    </section>
+    <section class="card">
+      <h2>Export</h2>
+      <ul><% for (const k of Object.keys(IMPORTS)) { %><li><a href="/admin/export/<%= k %>.csv"><%= k %>.csv</a></li><% } %></ul>
+    </section>
+  </div>
+</div>
+<%- include('../partials/foot') %>

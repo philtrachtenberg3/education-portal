@@ -1,0 +1,6 @@
+<% if (errors && errors.length) { %>
+  <div class="error-summary" role="alert" tabindex="-1">
+    <h2>There <%= errors.length === 1 ? 'is a problem' : `are ${errors.length} problems` %></h2>
+    <ul><% for (const e of errors) { %><li><%= e %></li><% } %></ul>
+  </div>
+<% } %>

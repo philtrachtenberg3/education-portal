@@ -1,0 +1,28 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<% const r = resource; %>
+<h1><%= r.id ? 'Edit material' : 'Add material' %></h1>
+<%- include('../partials/errors') %>
+<form class="card" method="post" action="/courses/<%= course.id %>/materials<%= r.id ? '/' + r.id : '' %>" enctype="multipart/form-data" data-warn-unsaved style="max-width:760px">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="field"><label for="title">Title</label><input id="title" type="text" name="title" required maxlength="200" value="<%= r.title || '' %>"></div>
+  <div class="field"><label for="description">Description</label><span class="hint">Students can search this text.</span><textarea id="description" name="description" rows="3"><%= r.description || '' %></textarea></div>
+  <div class="field-row">
+    <div class="field"><label for="kind">Type</label><select id="kind" name="kind"><% for (const [k, l] of Object.entries(KINDS)) { %><option value="<%= k %>" <%= r.kind === k ? 'selected' : '' %>><%= l %></option><% } %></select></div>
+    <div class="field"><label for="module_id">Module / topic</label><select id="module_id" name="module_id"><option value="">No module</option><% for (const m of modules) { %><option value="<%= m.id %>" <%= r.module_id === m.id ? 'selected' : '' %>><%= m.title %></option><% } %></select></div>
+  </div>
+  <fieldset><legend>Content</legend>
+    <div class="field">
+      <label for="file"><%= r.stored_name ? 'Replace file (optional)' : 'File' %></label>
+      <span class="hint" id="file-hint"><% if (r.stored_name) { %>Current file: <strong><%= r.file_name %></strong>. Uploading a new file keeps this item’s place and shows a new “updated” date. <% } %>Max <%= maxMb %> MB.</span>
+      <input id="file" type="file" name="file" accept="<%= accept %>" aria-describedby="file-hint">
+    </div>
+    <div class="field"><label for="url">Or a link</label><span class="hint">For recordings, external readings and websites.</span><input id="url" type="url" name="url" value="<%= r.url || '' %>"></div>
+  </fieldset>
+  <label class="check"><input type="checkbox" name="published" value="1" <%= r.published ? 'checked' : '' %>> Published — visible to students</label>
+  <div class="form-actions">
+    <button class="btn" type="submit"><%= r.id ? 'Save changes' : 'Save material' %></button>
+    <a class="btn secondary" href="/courses/<%= course.id %>/materials">Cancel</a>
+  </div>
+</form>
+<%- include('../partials/foot') %>

@@ -1,0 +1,55 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<div class="page-head">
+  <div><h1>Materials</h1><p>Lecture slides, readings, recordings, activities and references.</p></div>
+  <% if (isInstructor) { %>
+    <div class="item-actions">
+      <a class="btn" href="/courses/<%= course.id %>/materials/new">Add material</a>
+      <% if (asStudent) { %><a class="btn secondary" href="/courses/<%= course.id %>/materials">Exit student view</a><% } else { %><a class="btn secondary" href="?as=student">Preview as student</a><% } %>
+    </div>
+  <% } %>
+</div>
+<% if (isInstructor && asStudent) { %><div class="preview-banner" role="note"><span><strong>Student view.</strong> Drafts are hidden, exactly as students see this page.</span></div><% } %>
+
+<form method="get" class="card filters" role="search" aria-label="Search materials">
+  <% if (asStudent && isInstructor) { %><input type="hidden" name="as" value="student"><% } %>
+  <div class="field" style="flex:2 1 220px"><label for="q">Search titles and descriptions</label><input id="q" type="search" name="q" value="<%= filters.q %>"></div>
+  <div class="field"><label for="kind">Type</label>
+    <select id="kind" name="kind"><option value="">All types</option><% for (const [k, l] of Object.entries(KINDS)) { %><option value="<%= k %>" <%= filters.kind === k ? 'selected' : '' %>><%= l %></option><% } %></select></div>
+  <div class="field"><label for="module">Module / topic</label>
+    <select id="module" name="module"><option value="">All modules</option><% for (const m of modules) { %><option value="<%= m.id %>" <%= filters.module === m.id ? 'selected' : '' %>><%= m.title %></option><% } %></select></div>
+  <div class="field"><label for="sort">Sort</label>
+    <select id="sort" name="sort"><% for (const [k, l] of [['module', 'Module order'], ['newest', 'Newest first'], ['title', 'Title A–Z']]) { %><option value="<%= k %>" <%= filters.sort === k ? 'selected' : '' %>><%= l %></option><% } %></select></div>
+  <div class="actions"><button class="btn" type="submit">Search</button><a class="btn secondary" href="?<%= asStudent && isInstructor ? 'as=student' : '' %>">Clear</a></div>
+</form>
+
+<p aria-live="polite" class="small muted"><%= total %> item<%= total === 1 ? '' : 's' %><%= filters.q ? ` matching “${filters.q}”` : '' %></p>
+
+<% if (groups) { %>
+  <% if (!groups.length) { %><p class="empty"><%= total ? '' : 'No materials have been published yet.' %></p><% } %>
+  <% for (const g of groups) { %>
+    <section class="card" aria-labelledby="mod-<%= g.module.id || 'other' %>">
+      <h2 id="mod-<%= g.module.id || 'other' %>"><%= g.module.title %></h2>
+      <% if (!g.items.length) { %><p class="empty">No materials in this module yet. <a href="/courses/<%= course.id %>/materials/new?module=<%= g.module.id %>">Add one</a></p><% } else { %>
+        <ul class="list"><% for (const r of g.items) { %><%- include('../partials/resource-item', { r, showModule: false }) %><% } %></ul>
+      <% } %>
+    </section>
+  <% } %>
+<% } else { %>
+  <section class="card">
+    <% if (!items.length) { %><p class="empty">No materials match. Try a different word, or clear the filters.</p><% } else { %>
+      <ul class="list"><% for (const r of items) { %><%- include('../partials/resource-item', { r, showModule: true }) %><% } %></ul>
+    <% } %>
+    <%- include('../partials/pager') %>
+  </section>
+<% } %>
+
+<% if (isInstructor && !asStudent) { %>
+  <form class="card" method="post" action="/courses/<%= course.id %>/modules" style="max-width:520px">
+    <h2>Add a module</h2>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field"><label for="mt">Module name</label><span class="hint">e.g. “Week 10 · Graphs” or “Exam revision”</span><input id="mt" type="text" name="title" required maxlength="120"></div>
+    <button class="btn secondary" type="submit">Add module</button>
+  </form>
+<% } %>
+<%- include('../partials/foot') %>

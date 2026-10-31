@@ -1,0 +1,95 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<% const isInstructor = courseRole === 'instructor'; %>
+<h1 class="visually-hidden">Overview</h1>
+<div class="dash">
+  <div class="stack">
+    <section class="card" aria-labelledby="about-h">
+      <h2 id="about-h">About this course</h2>
+      <p class="prewrap"><%= course.description || 'No description yet.' %></p>
+      <dl class="facts small">
+        <dt>Instructor<%= instructors.length > 1 ? 's' : '' %></dt><dd><% if (!instructors.length) { %>To be announced<% } %><% instructors.forEach((i, n) => { %><%= n ? ', ' : '' %><%= i.name %> (<a href="mailto:<%= i.email %>"><%= i.email %></a>)<% }) %></dd>
+        <dt>Term</dt><dd><%= course.term_name %></dd>
+        <dt>Next class</dt><dd><%= next ? `${fmt.date(next.start)}, ${fmt.range(next.start, next.end)} · ${next.location}` : 'None scheduled' %></dd>
+      </dl>
+      <% if (isInstructor) { %>
+        <details style="margin-top:1rem">
+          <summary>Edit overview and grading policy</summary>
+          <form method="post" action="/courses/<%= course.id %>/overview" data-warn-unsaved style="margin-top:.75rem">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="field"><label for="desc">Course description</label><textarea id="desc" name="description"><%= course.description %></textarea></div>
+            <div class="field"><label for="policy">Grade calculation policy</label><span class="hint">Shown to students on their grades page.</span><textarea id="policy" name="grading_policy"><%= course.grading_policy %></textarea></div>
+            <label class="check"><input type="checkbox" name="show_total" value="1" <%= course.show_total ? 'checked' : '' %>> Show students a provisional, unweighted course total</label>
+            <button class="btn" type="submit">Save overview</button>
+          </form>
+        </details>
+      <% } %>
+    </section>
+
+    <section class="card" aria-labelledby="ann-h">
+      <h2 id="ann-h">Announcements</h2>
+      <% if (isInstructor) { %>
+        <details id="new-announcement" <%= query && 'new' in query ? 'open' : '' %>>
+          <summary>New announcement</summary>
+          <form method="post" action="/courses/<%= course.id %>/announcements" data-warn-unsaved style="margin-top:.75rem">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="field"><label for="a-title">Title</label><input id="a-title" type="text" name="title" required maxlength="200"></div>
+            <div class="field"><label for="a-body">Message</label><textarea id="a-body" name="body" required></textarea></div>
+            <div class="form-actions">
+              <button class="btn" type="submit" name="publish" value="1">Post and notify students</button>
+              <button class="btn secondary" type="submit">Save as draft</button>
+            </div>
+          </form>
+        </details>
+      <% } %>
+      <% if (!announcements.length) { %><p class="empty">No announcements yet.</p><% } else { %>
+        <ul class="list" style="margin-top:.75rem">
+          <% for (const a of announcements) { %>
+            <li id="announcement-<%= a.id %>">
+              <h3><%= a.title %> <% if (!a.published) { %><span class="badge warn">Draft — not visible to students</span><% } %></h3>
+              <p class="small muted"><%= a.author %> · <%= fmt.dateTime(a.created_at) %></p>
+              <p class="prewrap"><%= a.body %></p>
+              <% if (isInstructor) { %>
+                <form method="post" action="/courses/<%= course.id %>/announcements/<%= a.id %>/publish" class="inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn secondary small" type="submit"><%= a.published ? 'Hide from students' : 'Publish and notify' %><span class="visually-hidden">: <%= a.title %></span></button>
+                </form>
+              <% } %>
+            </li>
+          <% } %>
+        </ul>
+      <% } %>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card" aria-labelledby="upc-h">
+      <h2 id="upc-h">Coming up</h2>
+      <% if (!upcoming.length) { %><p class="empty">Nothing due soon in this course.</p><% } else { %>
+        <ul class="list">
+          <% for (const a of upcoming) { %>
+            <li>
+              <a class="item-title" href="/courses/<%= course.id %>/assignments/<%= a.id %>"><%= a.title %></a>
+              <div class="item-meta"><span>Due <%= fmt.dateTime(a.due_at) %></span>
+                <% if (a.state) { %><%- include('../partials/status', { s: a.state.status }) %><% } else if (!a.published) { %><span class="badge warn">Draft</span><% } %></div>
+            </li>
+          <% } %>
+        </ul>
+      <% } %>
+      <p style="margin:.75rem 0 0"><a href="/courses/<%= course.id %>/assignments">All assignments</a></p>
+    </section>
+
+    <% if (!isInstructor) { %>
+      <section class="card" aria-labelledby="nick-h">
+        <h2 id="nick-h">Personal nickname</h2>
+        <p class="small muted">Only you see this. The official course name and code stay visible.</p>
+        <form method="post" action="/courses/<%= course.id %>/nickname">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="field"><label for="nick">Nickname</label><input id="nick" type="text" name="nickname" maxlength="60" value="<%= courseNickname || '' %>"></div>
+          <button class="btn secondary small" type="submit">Save nickname</button>
+        </form>
+      </section>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

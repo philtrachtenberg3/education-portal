@@ -1,0 +1,29 @@
+<%- include('../partials/head') %>
+<p class="small"><a href="/admin/courses">← Courses</a></p>
+<h1><%= adminCourse.code %> — <%= adminCourse.title %></h1>
+<p class="muted"><%= adminCourse.term_name %> · <%= adminCourse.status %></p>
+<div class="dash">
+  <div class="table-wrap">
+    <table><caption class="visually-hidden">Enrollments</caption>
+      <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col">Dates</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        <% if (!enrollments.length) { %><tr><td colspan="5" class="muted">No enrollments yet.</td></tr><% } %>
+        <% for (const e of enrollments) { %>
+          <tr><th scope="row" style="font-weight:400"><%= e.name %><br><span class="small muted"><%= e.email %></span></th><td><%= e.role %></td>
+            <td><span class="badge <%= e.status === 'active' ? 'ok' : 'outline' %>"><%= e.status %></span></td>
+            <td class="small"><%= e.start_date || '' %><%= e.end_date ? ' – ' + e.end_date : '' %></td>
+            <td><form method="post" action="/admin/enrollments/<%= e.id %>/drop" class="inline"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn secondary small" type="submit"><%= e.status === 'active' ? 'End enrollment' : 'Restore' %><span class="visually-hidden"> for <%= e.name %></span></button></form></td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <form class="card" method="post" action="/admin/courses/<%= adminCourse.id %>/enrollments">
+    <h2>Enroll a person</h2>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field"><label for="em">Email</label><input id="em" type="email" name="email" required></div>
+    <div class="field"><label for="rl">Course role</label><select id="rl" name="role"><option value="student">Student</option><option value="instructor">Instructor</option></select></div>
+    <button class="btn" type="submit">Enroll</button>
+    <p class="small muted" style="margin-top:.75rem">Ending an enrollment keeps all past submissions and grades.</p>
+  </form>
+</div>
+<%- include('../partials/foot') %>

@@ -1,0 +1,168 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<% const a = assignment; const base = `/courses/${course.id}/assignments/${a.id}`; %>
+
+<% if (preview) { %>
+  <div class="preview-banner" role="note">
+    <span><strong>Student preview.</strong> This is exactly what students will see. <%= a.published ? 'This assignment is published.' : 'Not published — students cannot see it yet.' %></span>
+    <span class="item-actions">
+      <a class="btn secondary small" href="<%= base %>/edit">Edit</a>
+      <% if (!a.published) { %>
+        <form method="post" action="<%= base %>/publish" class="inline"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn small" type="submit">Publish to <%= course.code %></button></form>
+      <% } else { %>
+        <a class="btn secondary small" href="<%= base %>">Back to instructor view</a>
+      <% } %>
+    </span>
+  </div>
+<% } %>
+
+<div class="page-head">
+  <div>
+    <p class="small muted" style="margin:0"><%= KIND_LABEL[a.kind] %> · <%= course.code %></p>
+    <h1><%= a.title %></h1>
+  </div>
+  <%- include('../partials/status', { s: state.status }) %>
+</div>
+
+<div class="dash">
+  <div class="stack">
+    <section class="card" aria-labelledby="instr-h">
+      <h2 id="instr-h">Instructions</h2>
+      <div class="prewrap"><%= a.instructions || 'No additional instructions.' %></div>
+    </section>
+
+    <% if (state.grade) { const g = state.grade; %>
+      <section class="card" id="feedback" aria-labelledby="fb-h" tabindex="-1">
+        <h2 id="fb-h">Grade &amp; feedback</h2>
+        <p>
+          <% if (g.excused) { %><span class="badge s-excused">– Excused</span> This item does not count towards your grade.
+          <% } else { %><span class="stat"><%= fmt.points(g.points) %></span> <span class="muted">out of <%= fmt.points(a.points) %></span><% } %>
+        </p>
+        <% if (g.feedback) { %><div class="prewrap" style="border-left:4px solid var(--border);padding-left:.75rem"><%= g.feedback %></div><% } else { %><p class="muted">No written feedback.</p><% } %>
+        <p class="small muted" style="margin-top:.5rem">Released <%= fmt.dateTime(g.released_at) %></p>
+      </section>
+    <% } %>
+
+    <section class="card" id="submit" aria-labelledby="sub-h">
+      <h2 id="sub-h"><%= state.submission ? 'Your submission' : 'Submit your work' %></h2>
+
+      <% if (state.submission) { const cur = versions[0]; %>
+        <div class="notice <%= state.submission.status === 'returned' ? 'warn' : 'ok' %>">
+          <% if (state.submission.status === 'returned') { %>
+            <strong>Returned for revision.</strong> Your instructor has asked you to revise and resubmit.
+          <% } else if (cur) { %>
+            <strong>Submitted <%= fmt.dateTime(cur.submitted_at) %></strong><%= cur.is_late ? ' (late)' : '' %> by <%= cur.submitter_name %>.
+          <% } %>
+          <% if (state.credited) { %><a href="<%= base %>/receipt">View receipt</a><% } %>
+        </div>
+        <% if (!state.credited) { %>
+          <div class="notice warn">Your group submitted this before you joined, so you are not credited for it yet. Ask your instructor to add you to the submission.</div>
+        <% } %>
+        <% if (versions.length) { %>
+          <h3>Submission history</h3>
+          <ol class="list" reversed>
+            <% for (const v of versions) { %>
+              <li>
+                <strong>Version <%= v.version %></strong><%= v.version === state.submission.current_version ? ' (current)' : '' %> — <%= fmt.dateTime(v.submitted_at) %> by <%= v.submitter_name %><% if (v.is_late) { %> <span class="badge warn">Late</span><% } %>
+                <ul class="small">
+                  <% for (const f of v.files) { %><li><a href="/files/submissions/<%= f.id %>"><%= f.original_name %></a> (<%= fmt.size(f.size) %>)</li><% } %>
+                  <% if (v.body_text) { %><li>Text response (<%= v.body_text.split(/\s+/).length %> words)</li><% } %>
+                  <% if (v.link_url) { %><li>Link: <a href="<%= v.link_url %>" rel="noopener noreferrer"><%= v.link_url %></a></li><% } %>
+                </ul>
+              </li>
+            <% } %>
+          </ol>
+        <% } %>
+      <% } %>
+
+      <% if (!window.ok) { %>
+        <div class="notice <%= state.submission ? '' : 'warn' %>" role="note"><%= window.reason %>
+          <% if (a.group_set_id && !state.group) { %> <a href="/courses/<%= course.id %>/groups">Go to Groups</a><% } %>
+        </div>
+      <% } else { %>
+        <%- include('../partials/errors') %>
+        <div id="submit-status" class="notice" role="status" aria-live="polite" tabindex="-1" hidden></div>
+        <form method="post" action="<%= base %>/submit" enctype="multipart/form-data" <%- preview ? '' : 'data-submission-form' %>
+              data-allowed="<%= a.allowed_extensions %>" data-max-mb="<%= a.max_file_mb %>">
+          <fieldset <%= preview ? 'disabled' : '' %> style="border:0;padding:0;margin:0">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="idempotency_key" value="<%= idempotencyKey %>">
+          <% if (state.submission) { %><p class="small">Submitting again creates <strong>version <%= state.submission.current_version + 1 %></strong>. Earlier versions are kept.</p><% } %>
+
+          <% if (types.includes('file')) { %>
+            <div class="field">
+              <label for="files">File<%= types.length > 1 ? ' (optional if you use another method)' : 's' %></label>
+              <span class="hint" id="files-hint">Accepted: <%= a.allowed_extensions.split(',').map((e) => '.' + e).join(', ') %>. Max <%= a.max_file_mb %> MB per file, up to 5 files.</span>
+              <input id="files" type="file" name="files" multiple aria-describedby="files-hint" accept="<%= a.allowed_extensions.split(',').map((e) => '.' + e).join(',') %>">
+            </div>
+          <% } %>
+          <% if (types.includes('text')) { %>
+            <div class="field">
+              <label for="body_text">Text response</label>
+              <textarea id="body_text" name="body_text" rows="8"><%= draft.body_text || '' %></textarea>
+            </div>
+          <% } %>
+          <% if (types.includes('link')) { %>
+            <div class="field">
+              <label for="link_url">Link</label>
+              <span class="hint" id="link-hint">A full web address, e.g. https://github.com/you/project</span>
+              <input id="link_url" type="url" name="link_url" aria-describedby="link-hint" value="<%= draft.link_url || '' %>">
+            </div>
+          <% } %>
+
+          <div class="confirm-box">
+            <% if (a.group_set_id && state.group) { %>
+              <input type="hidden" name="group_id" value="<%= state.group.id %>">
+              <p style="margin-bottom:.25rem"><strong>You are submitting for <%= state.group.name %>.</strong> All <%= state.group.members.length %> confirmed members will be credited:</p>
+              <ul class="member-list"><% for (const m of state.group.members) { %><li><%= m.name %><%= m.id === user.id ? ' (you)' : '' %></li><% } %></ul>
+              <label class="check"><input type="checkbox" name="confirm" value="1" required> I confirm this submission is for <%= state.group.name %> and the members listed above.</label>
+            <% } else if (preview && a.group_set_id) { %>
+              <p>Students will see their confirmed group and its members here and must confirm before submitting.</p>
+              <label class="check"><input type="checkbox" disabled> I confirm this submission is for my group and the members listed above.</label>
+            <% } else { %>
+              <label class="check"><input type="checkbox" name="confirm" value="1" required> I confirm this is my work for “<%= a.title %>” and I am ready to submit it.</label>
+            <% } %>
+          </div>
+
+          <div class="progress" hidden><label for="upload-progress">Upload progress</label><progress id="upload-progress" max="100" value="0">0%</progress></div>
+          <div class="form-actions">
+            <button class="btn" type="submit"><%= state.submission ? 'Submit new version' : 'Submit' %></button>
+            <% if (state.pastDue) { %><span class="badge warn">The deadline has passed — this will be marked late</span><% } %>
+          </div>
+          </fieldset>
+        </form>
+
+        <dialog id="confirm-dialog" aria-labelledby="dlg-h">
+          <h2 id="dlg-h">Ready to submit?</h2>
+          <p><strong><%= a.title %></strong> · <%= course.code %><% if (state.group) { %> · for <%= state.group.name %> (<%= state.group.members.map((m) => m.name).join(', ') %>)<% } %></p>
+          <ul data-summary></ul>
+          <div class="form-actions">
+            <button type="button" class="btn" data-confirm-submit>Yes, submit</button>
+            <button type="button" class="btn secondary" data-cancel>Go back</button>
+          </div>
+        </dialog>
+      <% } %>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card" aria-labelledby="det-h">
+      <h2 id="det-h">Details</h2>
+      <%- include('../partials/assignment-facts') %>
+    </section>
+    <% if (a.group_set_id) { %>
+      <section class="card" aria-labelledby="grp-h">
+        <h2 id="grp-h">Your group</h2>
+        <% if (state.group) { %>
+          <p><strong><%= state.group.name %></strong></p>
+          <ul class="member-list"><% for (const m of state.group.members) { %><li><%= m.name %><%= m.id === user.id ? ' (you)' : '' %></li><% } %></ul>
+          <p class="small">Group status: <%- include('../partials/status', { s: state.submission ? state.submission.status : (state.pastDue ? 'missing' : 'not_submitted') }) %></p>
+        <% } else { %>
+          <p class="muted"><%= preview ? 'Students see their confirmed group here.' : 'You are not in a confirmed group for this assignment yet.' %></p>
+          <% if (!preview) { %><a href="/courses/<%= course.id %>/groups">Go to Groups</a><% } %>
+        <% } %>
+      </section>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

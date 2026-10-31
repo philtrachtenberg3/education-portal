@@ -1,0 +1,53 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<h1>Groups</h1>
+<% if (!sets.length) { %><p class="empty">This course does not use groups.</p><% } %>
+<% for (const set of sets) { %>
+  <section class="card" aria-labelledby="set-<%= set.id %>">
+    <h2 id="set-<%= set.id %>"><%= set.name %></h2>
+    <p class="small muted">
+      Up to <%= set.max_size %> members per group.
+      <%= set.student_created ? 'Students can create and join groups.' : 'Your instructor assigns groups.' %>
+      <%= set.requires_approval ? 'Membership needs instructor approval.' : '' %>
+      <% if (set.membership_deadline) { %>Membership deadline: <strong><%= fmt.dateTime(set.membership_deadline) %></strong><%= set.closed ? ' (passed)' : '' %>.<% } %>
+    </p>
+    <% if (set.assignments.length) { %><p class="small">Used for: <% set.assignments.filter((a) => a.published).forEach((a, i) => { %><%= i ? ', ' : '' %><a href="/courses/<%= course.id %>/assignments/<%= a.id %>"><%= a.title %></a><% }) %></p><% } %>
+
+    <% if (set.mine) { %>
+      <div class="confirm-box" style="margin-bottom:1rem">
+        <h3>Your group: <%= set.mine.group_name %> <%- set.mine.status === 'pending' ? '<span class="badge warn">Waiting for instructor approval</span>' : '<span class="badge ok">✓ Confirmed</span>' %></h3>
+        <ul class="member-list">
+          <% for (const m of set.myGroup.members) { %><li><%= m.name %><%= m.id === user.id ? ' (you)' : '' %><%= m.status === 'pending' ? ' — pending approval' : '' %></li><% } %>
+        </ul>
+        <% if (set.myGroup.locked) { %>
+          <p class="small">Your group has submitted work, so membership changes now go through your instructor.</p>
+        <% } else if (!set.closed && set.student_created) { %>
+          <form method="post" action="/courses/<%= course.id %>/groups/<%= set.mine.group_id %>/leave" data-confirm="Leave <%= set.mine.group_name %>?">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn danger small" type="submit">Leave group</button>
+          </form>
+        <% } %>
+      </div>
+    <% } else { %>
+      <p class="notice warn">You are not in a group for this set yet.<%= set.student_created && !set.closed ? ' Join a group below or create your own.' : ' Contact your instructor to be placed in a group.' %></p>
+      <% if (set.student_created && !set.closed) { %>
+        <ul class="list">
+          <% for (const g of set.groups) { const full = g.members.length >= set.max_size; %>
+            <li class="item">
+              <div class="item-main"><span class="item-title"><%= g.name %></span><span class="small muted"><%= g.members.length %> of <%= set.max_size %> places taken<%= g.locked ? ' · already submitted work' : '' %></span></div>
+              <% if (!full && !g.locked) { %>
+                <form method="post" action="/courses/<%= course.id %>/groups/<%= g.id %>/join"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn secondary small" type="submit"><%= set.requires_approval ? 'Request to join' : 'Join' %><span class="visually-hidden"> <%= g.name %></span></button></form>
+              <% } else { %><span class="badge outline"><%= g.locked ? 'Closed' : 'Full' %></span><% } %>
+            </li>
+          <% } %>
+        </ul>
+        <form method="post" action="/courses/<%= course.id %>/groups/sets/<%= set.id %>/create" class="filters" style="margin-top:1rem">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="field"><label for="ng-<%= set.id %>">Create a new group</label><input id="ng-<%= set.id %>" type="text" name="name" required maxlength="80" placeholder="Group name"></div>
+          <div class="actions"><button class="btn" type="submit">Create group</button></div>
+        </form>
+      <% } %>
+    <% } %>
+  </section>
+<% } %>
+<%- include('../partials/foot') %>

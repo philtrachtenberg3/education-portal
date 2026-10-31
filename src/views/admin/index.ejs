@@ -1,0 +1,14 @@
+<%- include('../partials/head') %>
+<div class="page-head"><div><h1>Administration</h1><p>Accounts, course shells, enrollments and the audit log. Administrators cannot view grades or submissions, and there is no account impersonation.</p></div></div>
+<div class="grid grid-3" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))">
+  <div class="card"><div class="stat"><%= counts.students %></div><div class="muted">Students</div></div>
+  <div class="card"><div class="stat"><%= counts.instructors %></div><div class="muted">Instructors</div></div>
+  <div class="card"><div class="stat"><%= counts.courses %></div><div class="muted">Active courses</div></div>
+  <div class="card"><div class="stat"><%= counts.enrollments %></div><div class="muted">Active enrollments</div></div>
+</div>
+<section class="card" style="margin-top:1rem">
+  <header><h2>Recent audit events</h2><a href="/admin/audit">Full audit log</a></header>
+  <div class="table-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Record</th><th>Change</th></tr></thead>
+    <tbody><% for (const e of recent) { %><%- include('../partials/audit-row', { e }) %><% } %></tbody></table></div>
+</section>
+<%- include('../partials/foot') %>

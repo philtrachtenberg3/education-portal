@@ -1,0 +1,40 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<h1>Grades &amp; feedback</h1>
+<div class="grid grid-2" style="margin-bottom:1rem">
+  <section class="card">
+    <h2>Course total</h2>
+    <% if (total) { %>
+      <p><span class="stat"><%= total.percent.toFixed(1) %>%</span> <span class="badge warn">Provisional</span></p>
+      <p class="small"><%= fmt.points(total.earned) %> of <%= fmt.points(total.possible) %> points from <%= total.count %> released item<%= total.count === 1 ? '' : 's' %>, unweighted. Included: <%= total.items.map((i) => i.title).join('; ') %>. Excused, ungraded and unreleased items are not included.</p>
+    <% } else if (course.show_total) { %>
+      <p class="muted">No grades have been released yet, so there is no total to show.</p>
+    <% } else { %>
+      <p class="muted">Your instructor has not enabled a running course total. Your final grade is calculated using the policy below.</p>
+    <% } %>
+  </section>
+  <section class="card">
+    <h2>Grading policy</h2>
+    <p class="prewrap"><%= course.grading_policy || 'Your instructor has not published a grading policy yet.' %></p>
+  </section>
+</div>
+<% if (!items.length) { %><p class="empty">No assignments published yet.</p><% } else { %>
+<div class="table-wrap">
+  <table>
+    <caption class="visually-hidden"><%= course.code %> grades</caption>
+    <thead><tr><th scope="col">Assignment</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col" class="num">Score</th><th scope="col">Feedback</th></tr></thead>
+    <tbody>
+      <% for (const a of items) { %>
+        <tr>
+          <th scope="row" style="font-weight:400"><a href="/courses/<%= course.id %>/assignments/<%= a.id %>"><%= a.title %></a></th>
+          <td class="small"><%= fmt.date(a.due_at) %></td>
+          <td><%- include('../partials/status', { s: a.state.status }) %></td>
+          <td class="num"><%- include('../partials/grade-cell', { a }) %></td>
+          <td class="small"><% if (a.state.grade && a.state.grade.feedback) { %><a href="/courses/<%= course.id %>/assignments/<%= a.id %>#feedback">Read feedback</a><% } else { %>—<% } %></td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

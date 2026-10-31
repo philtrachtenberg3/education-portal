@@ -1,0 +1,13 @@
+<%# Student-facing score for one assignment state. Never conflates not graded, not submitted, excused and zero. %>
+<% const g = a.state.grade; %>
+<% if (g && g.excused) { %>
+  <span class="badge s-excused">– Excused</span><span class="visually-hidden"> (not counted)</span>
+<% } else if (g && g.points != null) { %>
+  <span class="score"><%= fmt.points(g.points) %> / <%= fmt.points(a.points) %></span>
+<% } else if (a.state.submission) { %>
+  <span class="muted">Not graded yet</span>
+<% } else if (a.state.pastDue) { %>
+  <span class="muted">Not submitted</span>
+<% } else { %>
+  <span class="muted">—</span>
+<% } %>

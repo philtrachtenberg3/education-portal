@@ -1,0 +1,36 @@
+<%- include('partials/head') %>
+<h1>Settings</h1>
+<%- include('partials/errors') %>
+<form method="post" action="/settings" class="card" style="max-width:640px">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="field">
+    <label for="timezone">Time zone</label>
+    <span class="hint" id="tz-hint">All dates and deadlines are shown in this zone, with the zone named next to each time. Deadlines never move — only how they are displayed.</span>
+    <select id="timezone" name="timezone" aria-describedby="tz-hint">
+      <% for (const z of zones) { %><option value="<%= z %>" <%= z === user.timezone ? 'selected' : '' %>><%= z.replace(/_/g, ' ') %></option><% } %>
+    </select>
+  </div>
+  <fieldset>
+    <legend>Notifications</legend>
+    <label class="check"><input type="checkbox" name="email_notifications" value="1" <%= user.email_notifications ? 'checked' : '' %>> Also send me an email for each notification</label>
+    <p class="hint">Emails never include grades or submission details — only a link to sign in.</p>
+    <% if (user.role === 'student') { %>
+      <label for="reminder_hours">Deadline reminders</label>
+      <select id="reminder_hours" name="reminder_hours">
+        <% for (const [v, l] of [[0, 'Off'], [6, '6 hours before'], [12, '12 hours before'], [24, '1 day before'], [48, '2 days before'], [72, '3 days before']]) { %>
+          <option value="<%= v %>" <%= v === user.reminder_hours ? 'selected' : '' %>><%= l %></option>
+        <% } %>
+      </select>
+      <p class="hint">Only for work you have not yet submitted.</p>
+    <% } else { %>
+      <input type="hidden" name="reminder_hours" value="<%= user.reminder_hours %>">
+    <% } %>
+  </fieldset>
+  <button class="btn" type="submit">Save settings</button>
+</form>
+<div class="card" style="max-width:640px">
+  <h2>Calendar feed</h2>
+  <p>Download your timetable, exams and deadlines as a standard calendar file (.ics) for Google Calendar, Outlook or Apple Calendar.</p>
+  <a class="btn secondary" href="/calendar.ics">Download calendar (.ics)</a>
+</div>
+<%- include('partials/foot') %>

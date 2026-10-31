@@ -1,0 +1,24 @@
+<% const isFile = !!r.stored_name; %>
+<li class="item" id="resource-<%= r.id %>">
+  <div class="item-main">
+    <span class="badge outline"><%= KINDS[r.kind] %></span>
+    <% if (!r.published) { %><span class="badge warn">✎ Draft — hidden from students</span><% } %>
+    <span class="item-title"><a href="<%= isFile ? '/files/resources/' + r.id : r.url %>" <%- isFile ? '' : 'rel="noopener noreferrer"' %>><%= r.title %></a></span>
+    <% if (r.description) { %><p class="small" style="margin:.15rem 0"><%= r.description %></p><% } %>
+    <div class="item-meta">
+      <% if (showModule && r.module_title) { %><span>Module: <%= r.module_title %></span><% } %>
+      <span><%= isFile ? `${r.file_name.split('.').pop().toUpperCase()} · ${fmt.size(r.file_size)}` : 'External link' %></span>
+      <span><%= r.created_at === r.updated_at ? 'Added' : 'Updated' %> <%= fmt.date(r.updated_at) %></span>
+      <span>by <%= r.uploader %></span>
+    </div>
+  </div>
+  <% if (isInstructor && !asStudent) { %>
+    <div class="item-actions">
+      <a class="btn secondary small" href="/courses/<%= course.id %>/materials/<%= r.id %>/edit">Edit<span class="visually-hidden"> <%= r.title %></span></a>
+      <form method="post" action="/courses/<%= course.id %>/materials/<%= r.id %>/publish" class="inline">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn small <%= r.published ? 'secondary' : '' %>" type="submit"><%= r.published ? 'Unpublish' : 'Publish' %><span class="visually-hidden"> <%= r.title %></span></button>
+      </form>
+    </div>
+  <% } %>
+</li>

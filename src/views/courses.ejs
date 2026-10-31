@@ -1,0 +1,25 @@
+<%- include('partials/head') %>
+<div class="page-head">
+  <div><h1>Courses</h1><p><%= user.role === 'instructor' ? 'Courses you teach this term.' : 'Your active courses this term.' %></p></div>
+</div>
+<% if (!rows.length) { %>
+  <p class="empty">You are not enrolled in any active courses. If you think this is wrong, contact the registrar’s office.</p>
+<% } else { %>
+<div class="grid grid-3">
+  <% for (const r of rows) { const c = r.course; %>
+    <article class="card course-card" style="--course: <%= c.color %>">
+      <div class="small muted"><strong><%= c.code %></strong> · <%= c.term_name %></div>
+      <h2 style="margin-top:.2rem"><a href="/courses/<%= c.id %>"><%= c.nickname || c.title %></a></h2>
+      <% if (c.nickname) { %><p class="small muted">Official name: <%= c.title %></p><% } %>
+      <p class="small"><span class="muted">Instructor:</span> <%= r.instructors.join(', ') || 'To be announced' %></p>
+      <dl class="facts small">
+        <dt>Next class</dt>
+        <dd><%= r.nextMeeting ? `${fmt.date(r.nextMeeting.start)}, ${fmt.range(r.nextMeeting.start, r.nextMeeting.end)} · ${r.nextMeeting.location}` : 'None scheduled' %></dd>
+        <dt>Next due</dt>
+        <dd><% if (r.nextDue) { %><a href="/courses/<%= c.id %>/assignments/<%= r.nextDue.id %>"><%= r.nextDue.title %></a> — <%= fmt.dateTime(r.nextDue.due_at) %><% } else { %>Nothing due<% } %></dd>
+      </dl>
+    </article>
+  <% } %>
+</div>
+<% } %>
+<%- include('partials/foot') %>

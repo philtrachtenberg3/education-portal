@@ -1,0 +1,53 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<% const a = assignment; const base = `/courses/${course.id}/assignments/${a.id}`; %>
+<div class="page-head">
+  <div>
+    <p class="small muted" style="margin:0"><a href="<%= base %>"><%= a.title %></a> · due <%= fmt.dateTime(a.due_at) %></p>
+    <h1>Submissions</h1>
+    <p><%= a.group_set_id ? `Group assignment — one row per group; each lists every credited member. Grading: ${a.group_grading}.` : 'Individual assignment — one row per student.' %></p>
+  </div>
+  <div class="item-actions">
+    <% if (unreleased) { %>
+      <form method="post" action="<%= base %>/release" data-confirm="Release <%= unreleased %> grade(s) to students now? They will be notified.">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn" type="submit">Release <%= unreleased %> grade<%= unreleased === 1 ? '' : 's' %></button>
+      </form>
+    <% } %>
+    <a class="btn secondary" href="/courses/<%= course.id %>/grades.csv">Export grades (CSV)</a>
+  </div>
+</div>
+<form method="get" class="card filters" role="search" aria-label="Filter submissions">
+  <div class="field"><label for="q">Search name</label><input id="q" type="search" name="q" value="<%= filters.q %>"></div>
+  <div class="field"><label for="st">Status</label>
+    <select id="st" name="status">
+      <option value="">All (<%= Object.values(counts).reduce((x, y) => x + y, 0) %>)</option>
+      <option value="needs_grading" <%= filters.status === 'needs_grading' ? 'selected' : '' %>>Needs grading</option>
+      <% for (const k of ['submitted', 'late', 'resubmitted', 'returned', 'graded_draft', 'graded', 'not_submitted', 'missing']) { if (!counts[k]) continue; %>
+        <option value="<%= k %>" <%= filters.status === k ? 'selected' : '' %>><%= ROSTER_LABEL[k] %> (<%= counts[k] %>)</option>
+      <% } %>
+    </select></div>
+  <div class="field"><label for="sort">Sort by</label>
+    <select id="sort" name="sort"><option value="name">Name</option><option value="time" <%= filters.sort === 'time' ? 'selected' : '' %>>Most recent submission</option></select></div>
+  <div class="actions"><button class="btn" type="submit">Apply</button></div>
+</form>
+<div class="table-wrap">
+  <table>
+    <caption class="visually-hidden">Submissions for <%= a.title %></caption>
+    <thead><tr><th scope="col"><%= a.group_set_id ? 'Group' : 'Student' %></th><% if (a.group_set_id) { %><th scope="col">Credited members</th><% } %><th scope="col">Status</th><th scope="col">Submitted</th><th scope="col" class="num">Grade</th><th scope="col">Action</th></tr></thead>
+    <tbody>
+      <% if (!rows.length) { %><tr><td colspan="6" class="muted">No rows match these filters.</td></tr><% } %>
+      <% for (const r of rows) { %>
+        <tr>
+          <th scope="row" style="font-weight:600"><%= r.name %><% if (r.type === 'group') { %> <span class="badge info">Group</span><% } else if (r.type === 'ungrouped') { %> <span class="badge warn">No group</span><% } %></th>
+          <% if (a.group_set_id) { %><td class="small"><%= r.members.map((m) => m.name).join(', ') || '—' %></td><% } %>
+          <td><span class="badge s-<%= r.status %>"><%= ROSTER_LABEL[r.status] %></span></td>
+          <td class="small"><%= r.submission ? fmt.dateTime(r.submission.last_submitted_at) + (r.submission.current_version > 1 ? ` (v${r.submission.current_version})` : '') : '—' %></td>
+          <td class="num small"><%= r.grades.length ? r.grades.map((g) => g.excused ? 'EX' : fmt.points(g.points)).join(' / ') : '—' %></td>
+          <td><a class="btn secondary small" href="<%= base %>/grade/<%= r.key %>"><%= r.submission ? 'Review & grade' : 'Grade' %><span class="visually-hidden"> <%= r.name %></span></a></td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/foot') %>

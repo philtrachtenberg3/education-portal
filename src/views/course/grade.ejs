@@ -1,0 +1,114 @@
+<%- include('../partials/head') %>
+<%- include('../partials/course-head') %>
+<% const a = assignment; const base = `/courses/${course.id}/assignments/${a.id}`; const sub = target.submission; %>
+<div class="page-head">
+  <div>
+    <p class="small muted" style="margin:0"><a href="<%= base %>/submissions">← All submissions</a> · <%= a.title %> · <%= fmt.points(a.points) %> points</p>
+    <h1><%= target.name %><% if (target.type === 'group') { %> <span class="badge info">Group</span><% } %></h1>
+  </div>
+  <nav class="item-actions" aria-label="Next and previous">
+    <% if (prev) { %><a class="btn secondary small" href="<%= base %>/grade/<%= prev.key %>">← <%= prev.name %></a><% } %>
+    <% if (next) { %><a class="btn secondary small" href="<%= base %>/grade/<%= next.key %>"><%= next.name %> →</a><% } %>
+  </nav>
+</div>
+<%- include('../partials/errors') %>
+<div class="dash">
+  <div class="stack">
+    <section class="card" aria-labelledby="work-h">
+      <h2 id="work-h">Submitted work</h2>
+      <% if (!sub) { %>
+        <p class="empty">No submission<%= a.due_at < new Date().toISOString() ? ' — past due' : ' yet' %>. You can still record a grade (for example, excused or zero).</p>
+      <% } else { const v = versions[0]; %>
+        <dl class="facts">
+          <dt>Status</dt><dd><%- include('../partials/status', { s: sub.status }) %></dd>
+          <dt>Submitted</dt><dd><%= fmt.dateTime(v.submitted_at) %><% if (v.is_late) { %> <span class="badge warn">Late</span><% } %></dd>
+          <dt>Submitted by</dt><dd><%= v.submitter_name %><%= target.type === 'group' ? ` for ${target.name}` : '' %></dd>
+          <% if (target.type === 'group') { %><dt>Credited members</dt><dd><%= target.members.map((m) => m.name).join(', ') %></dd><% } %>
+          <dt>Receipt</dt><dd><a href="<%= base %>/receipt?s=<%= sub.id %>">SUB-<%= sub.id %>-V<%= v.version %></a></dd>
+        </dl>
+        <h3 style="margin-top:1rem">Version <%= v.version %><%= versions.length > 1 ? ' (current)' : '' %></h3>
+        <ul>
+          <% for (const f of v.files) { %><li><a href="/files/submissions/<%= f.id %>"><%= f.original_name %></a> (<%= fmt.size(f.size) %>)</li><% } %>
+          <% if (v.link_url) { %><li>Link: <a href="<%= v.link_url %>" rel="noopener noreferrer"><%= v.link_url %></a></li><% } %>
+        </ul>
+        <% if (v.body_text) { %><div class="prewrap" style="background:var(--surface-2);padding:.75rem;border-radius:8px"><%= v.body_text %></div><% } %>
+        <% if (versions.length > 1) { %>
+          <details style="margin-top:.75rem"><summary>Earlier versions (<%= versions.length - 1 %>)</summary>
+            <ul class="small"><% for (const x of versions.slice(1)) { %><li>Version <%= x.version %> — <%= fmt.dateTime(x.submitted_at) %> by <%= x.submitter_name %>: <% for (const f of x.files) { %><a href="/files/submissions/<%= f.id %>"><%= f.original_name %></a> <% } %><%= x.body_text ? '(text)' : '' %></li><% } %></ul>
+          </details>
+        <% } %>
+      <% } %>
+    </section>
+
+    <form class="card" method="post" action="<%= base %>/grade/<%= target.key %>" data-warn-unsaved aria-labelledby="gr-h">
+      <h2 id="gr-h">Grade &amp; feedback</h2>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% if (next) { %><input type="hidden" name="next_key" value="<%= next.key %>"><% } %>
+      <% if (!target.members.length) { %><p class="empty">This group has no members.</p><% } %>
+
+      <% if (shared) { %>
+        <p class="notice">Shared grading: the score and feedback below apply to every member. Use a member’s override only when their grade should differ — other members are not affected.</p>
+        <div class="field-row">
+          <div class="field"><label for="shared_points">Group score (out of <%= fmt.points(a.points) %>)</label><input id="shared_points" type="number" name="shared_points" step="0.5" min="0" value="<%= sharedPoints ?? '' %>"></div>
+        </div>
+        <div class="field"><label for="shared_feedback">Group feedback</label><textarea id="shared_feedback" name="shared_feedback"><%= firstFeedback %></textarea></div>
+        <fieldset><legend>Per-member adjustments</legend>
+          <% for (const m of target.members) { const g = grades[m.id]; const differs = g && g.points != null && g.points !== sharedPoints; const fbDiffers = g && g.feedback && g.feedback !== firstFeedback; %>
+            <div style="border-top:1px solid var(--border);padding-top:.6rem;margin-top:.6rem">
+              <p style="margin:0 0 .3rem"><strong><%= m.name %></strong> <%- g && g.released ? '<span class="badge ok">Released</span>' : g ? '<span class="badge warn">Not released</span>' : '' %></p>
+              <div class="field-row">
+                <div class="field"><label for="p-<%= m.id %>">Override score <span class="hint" style="display:inline">(blank = group score)</span></label><input id="p-<%= m.id %>" type="number" name="points_<%= m.id %>" step="0.5" min="0" value="<%= differs ? g.points : '' %>"></div>
+                <div class="field"><label class="check" style="margin-top:1.9rem"><input type="checkbox" name="excused_<%= m.id %>" value="1" <%= g && g.excused ? 'checked' : '' %>> Excused</label></div>
+              </div>
+              <div class="field"><label for="f-<%= m.id %>">Individual feedback <span class="hint" style="display:inline">(blank = group feedback)</span></label><textarea id="f-<%= m.id %>" name="feedback_<%= m.id %>" rows="2"><%= fbDiffers ? g.feedback : '' %></textarea></div>
+            </div>
+          <% } %>
+        </fieldset>
+      <% } else { %>
+        <% for (const m of target.members) { const g = grades[m.id]; %>
+          <fieldset><legend><%= m.name %> <%- g && g.released ? '<span class="badge ok">Released</span>' : g ? '<span class="badge warn">Not released</span>' : '' %></legend>
+            <div class="field-row">
+              <div class="field"><label for="p-<%= m.id %>">Score (out of <%= fmt.points(a.points) %>)</label><input id="p-<%= m.id %>" type="number" name="points_<%= m.id %>" step="0.5" min="0" value="<%= g && g.points != null ? g.points : '' %>"></div>
+              <div class="field"><label class="check" style="margin-top:1.9rem"><input type="checkbox" name="excused_<%= m.id %>" value="1" <%= g && g.excused ? 'checked' : '' %>> Excused (not counted)</label></div>
+            </div>
+            <div class="field"><label for="f-<%= m.id %>">Feedback</label><textarea id="f-<%= m.id %>" name="feedback_<%= m.id %>"><%= g ? g.feedback : '' %></textarea></div>
+          </fieldset>
+        <% } %>
+      <% } %>
+      <div class="field"><label for="reason">Reason for change (optional, recorded in the audit log)</label><input id="reason" type="text" name="reason" maxlength="500"></div>
+      <p class="small muted">A blank score means “not graded”. Enter 0 for a zero. Excused items are not counted.</p>
+      <div class="form-actions">
+        <button class="btn" type="submit" name="action" value="release">Save and release to student<%= target.members.length > 1 ? 's' : '' %></button>
+        <button class="btn secondary" type="submit" name="action" value="save">Save without releasing</button>
+        <% if (sub && sub.status !== 'returned') { %><button class="btn secondary" type="submit" name="action" value="return">Return for revision</button><% } %>
+      </div>
+      <% if (next) { %><label class="check" style="margin-top:.75rem"><input type="checkbox" name="go_next" value="1" checked> Go to next (<%= next.name %>) after saving</label><% } %>
+    </form>
+  </div>
+
+  <div class="stack">
+    <section class="card"><h2>Assignment</h2>
+      <dl class="facts small">
+        <dt>Due</dt><dd><%= fmt.dateTime(a.due_at) %></dd>
+        <dt>Points</dt><dd><%= fmt.points(a.points) %></dd>
+        <dt>Work type</dt><dd><%= a.group_set_id ? `Group · ${a.group_grading} grading` : 'Individual' %></dd>
+        <% if (a.late_policy) { %><dt>Late policy</dt><dd><%= a.late_policy %></dd><% } %>
+      </dl>
+    </section>
+    <section class="card" aria-labelledby="hist-h">
+      <h2 id="hist-h">Change history</h2>
+      <% if (!history.length) { %><p class="empty">No changes recorded yet.</p><% } else { %>
+        <ul class="list small">
+          <% for (const h of history) { const before = h.before_json ? JSON.parse(h.before_json) : null; const after = h.after_json ? JSON.parse(h.after_json) : {}; %>
+            <li><strong><%= h.action.replace(/[._]/g, ' ') %></strong> by <%= h.actor || 'system' %> — <%= fmt.dateTime(h.created_at) %>
+              <% if (h.entity_type === 'grade') { %><br>
+                <%= before ? `${before.excused ? 'EX' : fmt.points(before.points)}${before.released ? ' (released)' : ''} → ` : '' %><%= after.excused ? 'EX' : fmt.points(after.points) %><%= after.released ? ' (released)' : ' (not released)' %><%= after.feedback_changed ? ' · feedback updated' : '' %>
+              <% } %>
+              <% if (h.reason) { %><br><span class="muted">Reason: <%= h.reason %></span><% } %></li>
+          <% } %>
+        </ul>
+      <% } %>
+    </section>
+  </div>
+</div>
+<%- include('../partials/foot') %>

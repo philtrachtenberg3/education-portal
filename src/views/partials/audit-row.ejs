@@ -1,0 +1,7 @@
+<tr>
+  <td class="small"><%= fmt.dateTime(e.created_at) %></td>
+  <td><%= e.actor || 'system' %></td>
+  <td><code><%= e.action %></code></td>
+  <td class="small"><%= e.entity_type %><%= e.entity_id ? ' #' + e.entity_id : '' %><%= e.course_code ? ' · ' + e.course_code : '' %></td>
+  <td class="small"><% if (e.before_json) { %><span class="muted">before</span> <code><%= e.before_json %></code><br><% } %><% if (e.after_json) { %><span class="muted">after</span> <code><%= e.after_json %></code><% } %><% if (e.reason) { %><br><span class="muted">reason:</span> <%= e.reason %><% } %></td>
+</tr>

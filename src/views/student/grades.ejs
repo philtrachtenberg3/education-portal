@@ -1,0 +1,39 @@
+<%- include('../partials/head') %>
+<div class="page-head"><div><h1>Grades</h1><p>Released grades and feedback across all your active courses. Unreleased grades are not shown until your instructor releases them.</p></div></div>
+<% if (!sections.length) { %><p class="empty">No active courses.</p><% } %>
+<% for (const s of sections) { %>
+  <section class="card course-card" style="--course: <%= s.course.color %>" aria-labelledby="g-<%= s.course.id %>">
+    <header>
+      <h2 id="g-<%= s.course.id %>"><%= s.course.code %> — <%= s.course.nickname || s.course.title %></h2>
+      <a href="/courses/<%= s.course.id %>/grades">Course grade details</a>
+    </header>
+    <p class="small">
+      <% if (s.total) { %>
+        <strong>Provisional total: <%= s.total.percent.toFixed(1) %>%</strong> (<%= fmt.points(s.total.earned) %> of <%= fmt.points(s.total.possible) %> points, unweighted, from <%= s.total.count %> released item<%= s.total.count === 1 ? '' : 's' %>)
+      <% } else if (s.course.show_total) { %>
+        <span class="muted">No released grades yet, so no total is shown.</span>
+      <% } else { %>
+        <span class="muted">Your instructor has not enabled a course total. See the grading policy on the course grades page.</span>
+      <% } %>
+    </p>
+    <% if (!s.rows.length) { %><p class="empty">No assignments published yet.</p><% } else { %>
+    <div class="table-wrap">
+      <table>
+        <caption class="visually-hidden"><%= s.course.code %> grades</caption>
+        <thead><tr><th scope="col">Assignment</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col" class="num">Score</th></tr></thead>
+        <tbody>
+          <% for (const a of s.rows) { %>
+            <tr>
+              <th scope="row" style="font-weight:400"><a href="/courses/<%= a.course_id %>/assignments/<%= a.id %><%= a.state.grade ? '#feedback' : '' %>"><%= a.title %></a><% if (a.state.grade && a.state.grade.feedback) { %> <span class="badge info">Feedback</span><% } %></th>
+              <td class="small"><%= fmt.date(a.due_at) %></td>
+              <td><%- include('../partials/status', { s: a.state.status }) %></td>
+              <td class="num"><%- include('../partials/grade-cell', { a }) %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </section>
+<% } %>
+<%- include('../partials/foot') %>

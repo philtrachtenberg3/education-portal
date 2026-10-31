@@ -1,0 +1,37 @@
+<%- include('../partials/head') %>
+<h1>Accounts</h1>
+<% if (created) { %>
+  <div class="notice ok" role="status">Account created for <strong><%= created.name %></strong> (<%= created.email %>). Temporary password: <code><%= created.temp %></code> — shown once. Share it securely; in production, accounts sign in through institutional SSO instead.</div>
+<% } %>
+<div class="dash">
+  <div>
+    <form method="get" class="card filters" role="search" aria-label="Search accounts">
+      <div class="field"><label for="q">Name or email</label><input id="q" type="search" name="q" value="<%= q %>"></div>
+      <div class="field"><label for="role">Role</label><select id="role" name="role"><option value="">All</option><% for (const r of ['student', 'instructor', 'admin']) { %><option <%= role === r ? 'selected' : '' %>><%= r %></option><% } %></select></div>
+      <div class="actions"><button class="btn" type="submit">Search</button></div>
+    </form>
+    <div class="table-wrap">
+      <table><caption class="visually-hidden">Accounts</caption>
+        <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <% for (const u of users) { %>
+            <tr><th scope="row" style="font-weight:400"><%= u.name %></th><td class="small"><%= u.email %></td><td><%= u.role %></td>
+              <td><span class="badge <%= u.status === 'active' ? 'ok' : 'bad' %>"><%= u.status %></span></td>
+              <td><% if (u.id !== user.id) { %><form method="post" action="/admin/users/<%= u.id %>/status" class="inline" data-confirm="<%= u.status === 'active' ? 'Suspend' : 'Reactivate' %> <%= u.name %>?"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn secondary small" type="submit"><%= u.status === 'active' ? 'Suspend' : 'Reactivate' %><span class="visually-hidden"> <%= u.name %></span></button></form><% } %></td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <%- include('../partials/pager') %>
+  </div>
+  <form class="card" method="post" action="/admin/users">
+    <h2>Create account</h2>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field"><label for="n">Full name</label><input id="n" type="text" name="name" required></div>
+    <div class="field"><label for="e">Institutional email</label><input id="e" type="email" name="email" required></div>
+    <div class="field"><label for="r">Role</label><select id="r" name="role"><option>student</option><option>instructor</option><option>admin</option></select></div>
+    <button class="btn" type="submit">Create account</button>
+    <p class="small muted" style="margin-top:.75rem">For many accounts, use <a href="/admin/import">CSV import</a>.</p>
+  </form>
+</div>
+<%- include('../partials/foot') %>
